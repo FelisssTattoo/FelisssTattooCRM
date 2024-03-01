@@ -1,0 +1,4 @@
+[submodule "libs/tgbot-cpp"]
+	path = libs/tgbot-cpp
+	url = https://github.com/reo7sp/tgbot-cpp.git
+	branch = v1.7.2
