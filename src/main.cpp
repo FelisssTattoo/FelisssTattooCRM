@@ -4,12 +4,14 @@
 #include <exception>
 #include <string>
 
+#include <spdlog/spdlog.h>
 #include <tgbot/tgbot.h>
 
 using namespace std;
 using namespace TgBot;
 
 int main() {
+    spdlog::info("Test spdlog");
     string token(getenv("TOKEN"));
     printf("Token: %s\n", token.c_str());
 
