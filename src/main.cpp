@@ -8,10 +8,11 @@
 #include <exception>
 #include <string>
 
-static constexpr std::string_view LOG_FILENAME = "logfile";
+void initLogger();
 
 int main() {
-    spdlog::default_logger()->sinks().push_back(std::make_shared<spdlog::sinks::daily_file_sink_st>(LOG_FILENAME.data(), 23, 59));
+    initLogger();
+
     char* token_str = getenv("TOKEN");
 
     if (token_str == NULL) {
@@ -53,4 +54,9 @@ int main() {
     }
 
     return EXIT_SUCCESS;
+}
+
+void initLogger() {
+    static constexpr std::string_view LOG_FILENAME = "logfile";
+    spdlog::default_logger()->sinks().push_back(std::make_shared<spdlog::sinks::daily_file_sink_st>(LOG_FILENAME.data(), 23, 59));
 }
