@@ -8,10 +8,7 @@
 #include <exception>
 #include <string>
 
-using namespace std;
-using namespace TgBot;
-
-static constexpr string_view LOG_FILENAME = "logfile";
+static constexpr std::string_view LOG_FILENAME = "logfile";
 
 int main() {
     spdlog::default_logger()->sinks().push_back(std::make_shared<spdlog::sinks::daily_file_sink_st>(LOG_FILENAME.data(), 23, 59));
@@ -22,14 +19,14 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    string token(token_str);
+    std::string token(token_str);
     spdlog::info("Token: {}", token.c_str());
 
-    Bot bot(token);
-    bot.getEvents().onCommand("start", [&bot](Message::Ptr message) {
+    TgBot::Bot bot(token);
+    bot.getEvents().onCommand("start", [&bot](TgBot::Message::Ptr message) {
         bot.getApi().sendMessage(message->chat->id, "Hi!");
     });
-    bot.getEvents().onAnyMessage([&bot](Message::Ptr message) {
+    bot.getEvents().onAnyMessage([&bot](TgBot::Message::Ptr message) {
         spdlog::info("User wrote {}", message->text.c_str());
         if (StringTools::startsWith(message->text, "/start")) {
             return;
@@ -46,12 +43,12 @@ int main() {
         spdlog::info("Bot username: {}", bot.getApi().getMe()->username.c_str());
         bot.getApi().deleteWebhook();
 
-        TgLongPoll longPoll(bot);
+        TgBot::TgLongPoll longPoll(bot);
         while (true) {
             spdlog::debug("Long poll started");
             longPoll.start();
         }
-    } catch (exception& e) {
+    } catch (std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
     }
 
