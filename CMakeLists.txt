@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.20)
 
 project(FelisssTattooCRM)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+
 add_subdirectory(libs)
 
 file(GLOB srcs "src/**")

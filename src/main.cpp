@@ -1,26 +1,36 @@
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/daily_file_sink.h>
+#include <tgbot/tgbot.h>
+
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
 #include <string>
 
-#include <spdlog/spdlog.h>
-#include <tgbot/tgbot.h>
-
 using namespace std;
 using namespace TgBot;
 
+static constexpr string_view LOG_FILENAME = "logfile";
+
 int main() {
-    spdlog::info("Test spdlog");
-    string token(getenv("TOKEN"));
-    printf("Token: %s\n", token.c_str());
+    spdlog::default_logger()->sinks().push_back(std::make_shared<spdlog::sinks::daily_file_sink_st>(LOG_FILENAME.data(), 23, 59));
+    char* token_str = getenv("TOKEN");
+
+    if (token_str == NULL) {
+        SPDLOG_CRITICAL("Token not specified in env");
+        exit(EXIT_FAILURE);
+    }
+
+    string token(token_str);
+    spdlog::info("Token: {}", token.c_str());
 
     Bot bot(token);
     bot.getEvents().onCommand("start", [&bot](Message::Ptr message) {
         bot.getApi().sendMessage(message->chat->id, "Hi!");
     });
     bot.getEvents().onAnyMessage([&bot](Message::Ptr message) {
-        printf("User wrote %s\n", message->text.c_str());
+        spdlog::info("User wrote {}", message->text.c_str());
         if (StringTools::startsWith(message->text, "/start")) {
             return;
         }
@@ -28,22 +38,22 @@ int main() {
     });
 
     signal(SIGINT, [](int s) {
-        printf("SIGINT got\n");
-        exit(0);
+        spdlog::info("SIGINT got");
+        exit(EXIT_SUCCESS);
     });
 
     try {
-        printf("Bot username: %s\n", bot.getApi().getMe()->username.c_str());
+        spdlog::info("Bot username: {}", bot.getApi().getMe()->username.c_str());
         bot.getApi().deleteWebhook();
 
         TgLongPoll longPoll(bot);
         while (true) {
-            printf("Long poll started\n");
+            spdlog::debug("Long poll started");
             longPoll.start();
         }
     } catch (exception& e) {
-        printf("error: %s\n", e.what());
+        SPDLOG_ERROR("{}", e.what());
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
