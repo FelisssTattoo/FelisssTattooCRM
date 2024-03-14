@@ -6,3 +6,7 @@
 	path = libs/spdlog
 	url = git@github.com:gabime/spdlog.git
 	branch = v1.13.0
+[submodule "libs/SQLiteCpp"]
+	path = libs/SQLiteCpp
+	url = git@github.com:SRombauts/SQLiteCpp.git
+	branch = 3.3.1

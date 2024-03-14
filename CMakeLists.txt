@@ -10,5 +10,5 @@ add_subdirectory(libs)
 file(GLOB srcs "src/**")
 add_executable(${PROJECT_NAME} ${srcs})
 
-set(LIBS_LIST spdlog::spdlog_header_only sqlite TgBot)
+set(LIBS_LIST spdlog::spdlog_header_only SQLiteCpp TgBot)
 target_link_libraries(${PROJECT_NAME} ${LIBS_LIST})

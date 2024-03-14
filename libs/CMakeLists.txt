@@ -1,3 +1,3 @@
 add_subdirectory(spdlog)
-add_subdirectory(sqlite)
+add_subdirectory(SQLiteCpp)
 add_subdirectory(tgbot-cpp)
