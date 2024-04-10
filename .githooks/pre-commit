@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ -x "$(command -v clang-format-16)" ]; then
+  for FILE in $(git diff --cached --name-only)
+  do
+    if [[ $FILE == *.h || $FILE == *.c || $FILE == *.cpp ]]; then
+      echo "$FILE formatted via clang-format"
+      clang-format-16 -i $FILE
+      git add $FILE
+    fi
+  done
+  exit 0
+else
+  echo "clang-format-16 is not installed"
+  echo "Try 'sudo apt install clang-format-16'"
+  exit 1
+fi
