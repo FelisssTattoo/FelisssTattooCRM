@@ -1,5 +1,5 @@
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/daily_file_sink.h>
+#include <spdlog/spdlog.h>
 #include <tgbot/tgbot.h>
 
 #include <csignal>
@@ -58,5 +58,6 @@ int main() {
 
 void initLogger() {
     static constexpr std::string_view LOG_FILENAME = "logfile";
-    spdlog::default_logger()->sinks().push_back(std::make_shared<spdlog::sinks::daily_file_sink_st>(LOG_FILENAME.data(), 23, 59));
+    spdlog::default_logger()->sinks().push_back(
+        std::make_shared<spdlog::sinks::daily_file_sink_st>(LOG_FILENAME.data(), 23, 59));
 }
