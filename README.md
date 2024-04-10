@@ -1,7 +1,7 @@
 # Clone repository with submodules
 
 ```bash
-git clone --recurse-submodules git@github.com:tenk28/cxx_sql_course.git
+git clone --recurse-submodules git@github.com:FelisssTattoo/FelisssTattooCRM.git
 ```
 
 If you forget to use `--recurse-submodules` while cloning, use next command in project root
