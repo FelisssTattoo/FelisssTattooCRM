@@ -22,6 +22,13 @@ cd build
 make
 ```
 
+## build with static analyzer
+```bash
+cmake -B build -DRUN_CLANG_TIDY=ON
+cd build
+make
+```
+
 # Scripts/Tools
 
 ## clang-format
@@ -37,3 +44,10 @@ From root of project, run
 ./scripts/install_hooks.sh
 ```
 to force git to apply project's code style on pre-commit
+
+## clang-tidy
+From root of project, run
+```bash
+./scripts/run_clang_tidy.sh
+```
+to run static analyze
