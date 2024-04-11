@@ -15,19 +15,19 @@ int main() {
 
     char* token_str = getenv("TOKEN");
 
-    if (token_str == NULL) {
+    if (token_str == nullptr) {
         SPDLOG_CRITICAL("Token not specified in env");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
-    std::string token(token_str);
-    spdlog::info("Token: {}", token.c_str());
+    const std::string TOKEN(token_str);
+    spdlog::info("Token: {}", TOKEN.c_str());
 
-    TgBot::Bot bot(token);
-    bot.getEvents().onCommand("start", [&bot](TgBot::Message::Ptr message) {
+    TgBot::Bot bot(TOKEN);
+    bot.getEvents().onCommand("start", [&bot](const TgBot::Message::Ptr& message) {
         bot.getApi().sendMessage(message->chat->id, "Hi!");
     });
-    bot.getEvents().onAnyMessage([&bot](TgBot::Message::Ptr message) {
+    bot.getEvents().onAnyMessage([&bot](const TgBot::Message::Ptr& message) {
         spdlog::info("User wrote {}", message->text.c_str());
         if (StringTools::startsWith(message->text, "/start")) {
             return;
@@ -35,7 +35,7 @@ int main() {
         bot.getApi().sendMessage(message->chat->id, "Your message is: " + message->text);
     });
 
-    signal(SIGINT, [](int s) {
+    signal(SIGINT, [](int /*s*/) {
         spdlog::info("SIGINT got");
         exit(EXIT_SUCCESS);
     });
@@ -44,10 +44,10 @@ int main() {
         spdlog::info("Bot username: {}", bot.getApi().getMe()->username.c_str());
         bot.getApi().deleteWebhook();
 
-        TgBot::TgLongPoll longPoll(bot);
+        TgBot::TgLongPoll long_poll(bot);
         while (true) {
             spdlog::debug("Long poll started");
-            longPoll.start();
+            long_poll.start();
         }
     } catch (std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
@@ -58,6 +58,8 @@ int main() {
 
 void initLogger() {
     static constexpr std::string_view LOG_FILENAME = "logfile";
-    spdlog::default_logger()->sinks().push_back(
-        std::make_shared<spdlog::sinks::daily_file_sink_st>(LOG_FILENAME.data(), 23, 59));
+    static constexpr int ROTATION_HOUR             = 23;
+    static constexpr int ROTATION_MINUTE           = 59;
+    spdlog::default_logger()->sinks().push_back(std::make_shared<spdlog::sinks::daily_file_sink_st>(
+        LOG_FILENAME.data(), ROTATION_HOUR, ROTATION_MINUTE));
 }
