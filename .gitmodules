@@ -10,3 +10,7 @@
 	path = libs/SQLiteCpp
 	url = git@github.com:SRombauts/SQLiteCpp.git
 	branch = 3.3.1
+[submodule "libs/fmt"]
+	path = libs/fmt
+	url = git@github.com:fmtlib/fmt.git
+	branch = 10.2.1
