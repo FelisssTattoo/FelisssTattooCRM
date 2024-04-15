@@ -1,3 +1,5 @@
+#include "database_manager/database_manager.h"
+
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <tgbot/tgbot.h>
@@ -12,6 +14,9 @@ void initLogger();
 
 int main() {
     initLogger();
+
+    DatabaseManager database_manager("felisss.db");
+    database_manager.addCustomer({"Dmytro", "Shtrikker", "Yakovich", "15/08/2002", "0973074604"});
 
     char* token_str = getenv("TOKEN");
 

@@ -15,8 +15,8 @@ if(RUN_CLANG_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "clang-tidy-16")
 endif(RUN_CLANG_TIDY)
 
-file(GLOB srcs "src/**")
+file(GLOB_RECURSE srcs "src/**")
 add_executable(${PROJECT_NAME} ${srcs})
 
-set(LIBS_LIST spdlog::spdlog_header_only SQLiteCpp TgBot)
+set(LIBS_LIST spdlog::spdlog_header_only SQLiteCpp TgBot fmt-header-only)
 target_link_libraries(${PROJECT_NAME} ${LIBS_LIST})
