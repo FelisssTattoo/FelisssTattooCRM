@@ -12,7 +12,7 @@ add_subdirectory(libs)
 if(RUN_CLANG_TIDY)
     message(STATUS "Compiling with clang-tidy...")
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-    set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY "clang-tidy-16")
 endif(RUN_CLANG_TIDY)
 
 file(GLOB srcs "src/**")
