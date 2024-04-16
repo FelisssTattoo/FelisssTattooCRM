@@ -40,22 +40,16 @@ int main() {
         bot.getApi().sendMessage(message->chat->id, "Your message is: " + message->text);
     });
 
-    signal(SIGINT, [](int /*s*/) {
-        spdlog::info("SIGINT got");
-        exit(EXIT_SUCCESS);
-    });
-
-    try {
-        spdlog::info("Bot username: {}", bot.getApi().getMe()->username.c_str());
-        bot.getApi().deleteWebhook();
-
-        TgBot::TgLongPoll long_poll(bot);
-        while (true) {
-            spdlog::debug("Long poll started");
+    spdlog::info("Bot username: {}", bot.getApi().getMe()->username.c_str());
+    bot.getApi().deleteWebhook();
+    TgBot::TgLongPoll long_poll(bot);
+    while (true) {
+        spdlog::debug("Long poll started");
+        try {
             long_poll.start();
+        } catch (std::exception& e) {
+            SPDLOG_ERROR("{}", e.what());
         }
-    } catch (std::exception& e) {
-        SPDLOG_ERROR("{}", e.what());
     }
 
     return EXIT_SUCCESS;
@@ -67,4 +61,5 @@ void initLogger() {
     static constexpr int ROTATION_MINUTE           = 59;
     spdlog::default_logger()->sinks().push_back(std::make_shared<spdlog::sinks::daily_file_sink_st>(
         LOG_FILENAME.data(), ROTATION_HOUR, ROTATION_MINUTE));
+    spdlog::info("FelisssTattooBot started");
 }
