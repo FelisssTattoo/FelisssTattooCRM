@@ -1,4 +1,6 @@
 add_subdirectory(fmt)
 add_subdirectory(spdlog)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(json)
 add_subdirectory(SQLiteCpp)
 add_subdirectory(tgbot-cpp)

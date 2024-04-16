@@ -14,3 +14,7 @@
 	path = libs/fmt
 	url = git@github.com:fmtlib/fmt.git
 	branch = 10.2.1
+[submodule "libs/json"]
+	path = libs/json
+	url = git@github.com:nlohmann/json.git
+	branch = v3.11.3
