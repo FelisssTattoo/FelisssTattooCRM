@@ -12,7 +12,7 @@ git submodule update --init --recursive
 # Prerequisites/Dependencies
 
 ```bash
-sudo apt install libboost-all-dev
+sudo apt install libssl-dev libboost-dev
 ```
 
 # Build
