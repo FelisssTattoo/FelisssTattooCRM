@@ -9,13 +9,36 @@
 #include <exception>
 #include <string>
 
+static volatile sig_atomic_t done = 0;
+
+static void done_handler(int signum) {
+    spdlog::info("Finishing FelisssTattooBot, please wait...");
+    done = 1;
+}
+
+static bool install_done(const int signum) {
+    struct sigaction act;
+
+    memset(&act, 0, sizeof(act));
+
+    sigemptyset(&act.sa_mask);
+    act.sa_flags   = 0;
+    act.sa_handler = done_handler;
+    if (sigaction(signum, &act, NULL) == -1) {
+        SPDLOG_CRITICAL("Cannot install signal handlers: {}", strerror(errno));
+        return false;
+    }
+    return true;
+}
+
 int main() {
+    int app_exit_code = EXIT_SUCCESS;
     try {
         FelisssLogger::init();
 
-        DatabaseManager database_manager("felisss.db");
-        database_manager.addCustomer(
-            {"Dmytro", "Shtrikker", "Yakovich", "15/08/2002", "0973074604"});
+        if (!(install_done(SIGINT) && install_done(SIGHUP) && install_done(SIGTERM))) {
+            return EXIT_FAILURE;
+        }
 
         auto config_values = ConfigManager::getConfigValues();
         auto token         = config_values.token;
@@ -31,13 +54,14 @@ int main() {
         }
 
         BotManager bot(*token);
-        while (true) {
+        while (!done) {
             bot.poll();
         }
     } catch (const std::exception& e) {
-        SPDLOG_ERROR("{}", e.what());
-        return EXIT_FAILURE;
+        SPDLOG_CRITICAL("{}", e.what());
+        app_exit_code = EXIT_FAILURE;
     }
+    spdlog::shutdown();
 
-    return EXIT_SUCCESS;
+    return app_exit_code;
 }

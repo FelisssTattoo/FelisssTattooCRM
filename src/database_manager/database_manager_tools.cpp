@@ -3,6 +3,7 @@
 #include <fmt/core.h>
 
 #include <iomanip>
+#include <regex>
 
 using namespace std::chrono;
 
@@ -50,4 +51,13 @@ system_clock::time_point DatabaseManagerTools::convertStrToTimePoint(const std::
     std::stringstream ss(time_str);
     ss >> std::get_time(&tm, "%d/%m/%Y");
     return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+}
+
+bool DatabaseManagerTools::validateUserInput(const std::string& str) {
+    std::regex pattern("^[^'\";%]*$");
+    if (std::regex_match(str, pattern)) {
+        return true;
+    } else {
+        return false;
+    }
 }
