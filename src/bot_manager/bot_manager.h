@@ -20,12 +20,12 @@ private:
 
     void sendMessage(const TgBot::Message::Ptr& recv_message, const std::string& message);
     void sendMenuWithMessage(const TgBot::Message::Ptr& recv_message,
-                             const TgBot::GenericReply::Ptr& replyMarkup,
+                             const TgBot::GenericReply::Ptr& menu, const std::string& message);
+    void editMenuWithMessage(const TgBot::Message::Ptr& recv_message,
+                             const TgBot::InlineKeyboardMarkup::Ptr& menu,
                              const std::string& message);
-    void sendCurrentMenuWithMessage(const TgBot::Message::Ptr& recv_message,
-                                    const std::string& message);
-    void editCurrentMenuWithMessage(const TgBot::Message::Ptr& recv_message,
-                                    const std::string& message);
+    void sendCurrentMenu(const TgBot::Message::Ptr& recv_message);
+    void editCurrentMenu(const TgBot::Message::Ptr& recv_message);
 
     void callbackOnStartCommand(const TgBot::Message::Ptr& message);
     void callbackOnMakeMeAdminCommand(const TgBot::Message::Ptr& message);
@@ -33,14 +33,15 @@ private:
     void callbackOnAnyMessage(const TgBot::Message::Ptr& message);
     void callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query);
 
-    std::shared_ptr<ClientChatStatus> getClientChatStatus(const TgBot::Message::Ptr& message);
-    void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
-    UsersTable::UserRow scrapUserDataFromMessage(const TgBot::Message::Ptr& message);
-
     bool checkIfTelegramIdIsAdmin(std::int64_t telegram_id);
     bool checkIfTelegramIdIsTattooArtist(std::int64_t telegram_id);
 
     void updateChooseMaterialMenu();
+
+    std::shared_ptr<ClientChatStatus> getClientChatStatus(const TgBot::Message::Ptr& message);
+    void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
+    UsersTable::UserRow scrapUserDataFromMessage(const TgBot::Message::Ptr& message);
+    std::optional<std::string> getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu);
 
 private:
     const std::string_view mToken;
