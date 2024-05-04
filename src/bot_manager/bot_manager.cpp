@@ -259,7 +259,7 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
             mBotHandler.getApi().sendMessage(query->message->chat->id, "Як називається матеріал?");
             client_status->do_user_type_material_name = true;
         } else if (query->data == "delete_material" || query->data == "modify_material") {
-            const size_t max_columns_size = 3;
+            const size_t max_columns_size = 1;
             mChooseMaterialMenu->inlineKeyboard.clear();
 
             const auto materials = mDatabaseManager.getMaterials();
