@@ -20,13 +20,16 @@ private:
 
     void callbackOnStartCommand(const TgBot::Message::Ptr& message);
     void callbackOnMakeMeAdminCommand(const TgBot::Message::Ptr& message);
+    void callbackOnMakeMeTattooArtistCommand(const TgBot::Message::Ptr& message);
     void callbackOnAnyMessage(const TgBot::Message::Ptr& message);
     void callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query);
 
     std::shared_ptr<ClientChatStatus> getClientChatStatus(int64_t client_id);
-    void insertUserInTableItNotExists(const TgBot::Message::Ptr& message);
+    void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
+    UsersTable::UserRow scrapUserDataFromMessage(const TgBot::Message::Ptr& message);
 
     bool checkIfTelegramIdIsAdmin(std::int64_t telegram_id);
+    bool checkIfTelegramIdIsTattooArtist(std::int64_t telegram_id);
 
 private:
     const std::string_view mToken;
@@ -41,5 +44,5 @@ private:
 
     static TgBot::InlineKeyboardMarkup::Ptr mAdminMainMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mMaterialsMenu;
-    static TgBot::InlineKeyboardMarkup::Ptr mModifyMaterialMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialMenu;
 };

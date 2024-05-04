@@ -34,9 +34,8 @@ std::string UsersTable::formInsertRowQuery(const UserRow& row) {
     return return_str;
 }
 
-std::string UsersTable::formSelectByTelegramIdQuery(std::int64_t telegram_id) {
-    const auto return_str = fmt::format("SELECT * FROM {} WHERE telegram_id = \"{}\";", TABLE_NAME,
-                                        telegram_id);
+std::string UsersTable::formSelectRowQuery() {
+    const auto return_str = fmt::format("SELECT * FROM {};", TABLE_NAME);
 
     return return_str;
 }

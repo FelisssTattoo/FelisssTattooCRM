@@ -6,113 +6,220 @@
 
 DatabaseManager::DatabaseManager(std::string_view db_pathname) :
     mDbPathname(db_pathname),
-    mDbHandler(mDbPathname, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE) {
-    initCustomersTable();
+    mDbHandler(mDbPathname, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE),
+    isAdminsVectorUpdated(false),
+    isTattooArtistsVectorUpdated(false),
+    isUsersVectorUpdated(false),
+    isMaterialsVectorUpdated(false) {
+    initUsersTable();
     initMaterialsTable();
     initAdminsTable();
+    initTattooArtistsTable();
 }
 
-void DatabaseManager::addCustomer(const UsersTable::UserRow& user_row) {
+bool DatabaseManager::addUser(const UsersTable::UserRow& user_row) {
     try {
-        mDbHandler.exec(UsersTable::formInsertRowQuery(user_row));
+        const bool is_okay = mDbHandler.exec(UsersTable::formInsertRowQuery(user_row));
+        if (is_okay) {
+            isUsersVectorUpdated = false;
+        }
+        return is_okay;
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
+        return false;
     }
+}
+
+std::vector<UsersTable::UserRow> DatabaseManager::getUsers() {
+    static std::vector<UsersTable::UserRow> users_vector;
+
+    if (!isUsersVectorUpdated) {
+        users_vector.clear();
+
+        SQLite::Statement query(mDbHandler, UsersTable::formSelectRowQuery());
+        while (query.executeStep()) {
+            users_vector.push_back(getUserRowFromStatement(query));
+        }
+
+        isUsersVectorUpdated = true;
+    }
+
+    return users_vector;
 }
 
 std::optional<UsersTable::UserRow> DatabaseManager::getUserByTelegramId(std::int64_t telegram_id) {
+    const auto users = getUsers();
 
-    SQLite::Statement query(mDbHandler, UsersTable::formSelectByTelegramIdQuery(telegram_id));
+    const auto user = std::find_if(users.begin(), users.end(), [telegram_id](const auto& user_row) {
+        return (user_row.telegram_id == telegram_id);
+    });
 
-    try {
-        query.executeStep();
-
-        return getUserRowFromStatement(query);
-    } catch (const std::exception& e) {
-        SPDLOG_WARN("{}", e.what());
+    if (user != users.end()) {
+        return *user;
     }
+
     return {};
 }
 
-std::vector<UsersTable::UserRow> DatabaseManager::getAdmins() {
-    const auto return_str = fmt::format("SELECT u.* "
-                                        "FROM users u "
-                                        "INNER JOIN admins a ON u.user_id = a.user_id;",
-                                        UsersTable::TABLE_NAME, AdminsTable::TABLE_NAME);
-    SQLite::Statement query(mDbHandler, return_str);
-    std::vector<UsersTable::UserRow> return_vec;
-    while (query.executeStep()) {
-        return_vec.push_back(getUserRowFromStatement(query));
-    }
-
-    return return_vec;
-}
-
-void DatabaseManager::addAdmin(const UsersTable::UserRow& user_row) {
+bool DatabaseManager::addAdmin(const UsersTable::UserRow& user_row) {
     AdminsTable::AdminRow admin_row = {.user_id = user_row.id.value()};
     try {
-        mDbHandler.exec(AdminsTable::formInsertRowQuery(admin_row));
+        const bool is_okay = mDbHandler.exec(AdminsTable::formInsertRowQuery(admin_row));
+        if (is_okay) {
+            isAdminsVectorUpdated = false;
+        }
+        return is_okay;
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
+        return false;
     }
+}
+
+std::vector<UsersTable::UserRow> DatabaseManager::getAdmins() {
+    static std::vector<UsersTable::UserRow> admins_vector;
+
+    if (!isAdminsVectorUpdated) {
+        admins_vector.clear();
+
+        const auto return_str = fmt::format("SELECT u.* "
+                                            "FROM {} u "
+                                            "INNER JOIN {} a ON u.user_id = a.user_id;",
+                                            UsersTable::TABLE_NAME, AdminsTable::TABLE_NAME);
+        SQLite::Statement query(mDbHandler, return_str);
+        while (query.executeStep()) {
+            admins_vector.push_back(getUserRowFromStatement(query));
+        }
+
+        isAdminsVectorUpdated = true;
+    }
+
+    return admins_vector;
+}
+
+bool DatabaseManager::addTattooArtist(const UsersTable::UserRow& user_row) {
+    TattooArtistsTable::TattooArtistRow tattoo_artist_row = {.user_id = user_row.id.value()};
+    try {
+        const bool is_okay = mDbHandler.exec(
+            TattooArtistsTable::formInsertRowQuery(tattoo_artist_row));
+        if (is_okay) {
+            isTattooArtistsVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+std::vector<UsersTable::UserRow> DatabaseManager::getTattooArtists() {
+    static std::vector<UsersTable::UserRow> tattoo_artists_vector;
+
+    if (!isTattooArtistsVectorUpdated) {
+        tattoo_artists_vector.clear();
+
+        const auto return_str = fmt::format("SELECT u.* "
+                                            "FROM {} u "
+                                            "INNER JOIN {} a ON u.user_id = a.user_id;",
+                                            UsersTable::TABLE_NAME, TattooArtistsTable::TABLE_NAME);
+        SQLite::Statement query(mDbHandler, return_str);
+        while (query.executeStep()) {
+            tattoo_artists_vector.push_back(getUserRowFromStatement(query));
+        }
+
+        isTattooArtistsVectorUpdated = true;
+    }
+
+    return tattoo_artists_vector;
 }
 
 bool DatabaseManager::addMaterial(const MaterialsTable::MaterialRow& material_row) {
     try {
-        return mDbHandler.exec(MaterialsTable::formInsertRowQuery(material_row));
+        const bool is_okay = mDbHandler.exec(MaterialsTable::formInsertRowQuery(material_row));
+        if (is_okay) {
+            isMaterialsVectorUpdated = false;
+        }
+        return is_okay;
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
         return false;
     }
 }
 
-bool DatabaseManager::updateMaterialCountById(size_t new_count, size_t id) {
+bool DatabaseManager::updateMaterialCountById(std::int64_t id,
+                                              const MaterialsTable::MaterialRow& material_row) {
+
     try {
-        return mDbHandler.exec(MaterialsTable::formUpdateCountByIdQuery(new_count, id));
+        const bool is_okay = mDbHandler.exec(MaterialsTable::formUpdateRowQuery(id, material_row));
+        if (is_okay) {
+            isMaterialsVectorUpdated = false;
+        }
+        return is_okay;
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
         return false;
     }
 }
 
-std::optional<MaterialsTable::MaterialRow>
-DatabaseManager::getMaterialByName(const std::string& name) {
-    SQLite::Statement query(mDbHandler, MaterialsTable::formSelectRowByNameQuery(name));
-
+bool DatabaseManager::deleteMaterialById(std::int64_t id) {
     try {
-        query.executeStep();
-
-        return getMaterialRowFromStatement(query);
+        const bool is_okay = mDbHandler.exec(MaterialsTable::formDeleteRowQuery(id));
+        if (is_okay) {
+            isMaterialsVectorUpdated = false;
+        }
+        return is_okay;
     } catch (const std::exception& e) {
-        SPDLOG_WARN("{}", e.what());
-        return {};
-    }
-}
-
-std::optional<MaterialsTable::MaterialRow> DatabaseManager::getMaterialById(size_t id) {
-    SQLite::Statement query(mDbHandler, MaterialsTable::formSelectRowByIdQuery(id));
-
-    try {
-        query.executeStep();
-
-        return getMaterialRowFromStatement(query);
-    } catch (const std::exception& e) {
-        SPDLOG_WARN("{}", e.what());
-        return {};
+        SPDLOG_ERROR("{}", e.what());
+        return false;
     }
 }
 
 std::vector<MaterialsTable::MaterialRow> DatabaseManager::getMaterials() {
-    SQLite::Statement query(mDbHandler, MaterialsTable::formSelectRowQuery());
-    std::vector<MaterialsTable::MaterialRow> return_vec;
-    while (query.executeStep()) {
-        return_vec.push_back(getMaterialRowFromStatement(query));
+    static std::vector<MaterialsTable::MaterialRow> materials_vector;
+
+    if (!isMaterialsVectorUpdated) {
+        materials_vector.clear();
+
+        SQLite::Statement query(mDbHandler, MaterialsTable::formSelectRowQuery());
+        while (query.executeStep()) {
+            materials_vector.push_back(getMaterialRowFromStatement(query));
+        }
+
+        isMaterialsVectorUpdated = true;
     }
 
-    return return_vec;
+    return materials_vector;
 }
 
-void DatabaseManager::initCustomersTable() {
+std::optional<MaterialsTable::MaterialRow>
+DatabaseManager::getMaterialByName(const std::string& name) {
+    const auto materials = getMaterials();
+    const auto material  = std::find_if(materials.begin(), materials.end(),
+                                        [name](const auto& material_row) {
+                                           return (material_row.name == name);
+                                       });
+
+    if (material != materials.end()) {
+        return *material;
+    }
+
+    return {};
+}
+
+std::optional<MaterialsTable::MaterialRow> DatabaseManager::getMaterialById(size_t id) {
+    const auto materials = getMaterials();
+    const auto material  = std::find_if(materials.begin(), materials.end(),
+                                        [id](const auto& material_row) {
+                                           return (material_row.id == id);
+                                       });
+
+    if (material != materials.end()) {
+        return *material;
+    }
+
+    return {};
+}
+
+void DatabaseManager::initUsersTable() {
     try {
         mDbHandler.exec(UsersTable::formCreateTableQuery());
     } catch (const std::exception& e) {
@@ -131,6 +238,14 @@ void DatabaseManager::initMaterialsTable() {
 void DatabaseManager::initAdminsTable() {
     try {
         mDbHandler.exec(AdminsTable::formCreateTableQuery());
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+    }
+}
+
+void DatabaseManager::initTattooArtistsTable() {
+    try {
+        mDbHandler.exec(TattooArtistsTable::formCreateTableQuery());
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
     }

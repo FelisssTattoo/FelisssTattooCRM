@@ -15,11 +15,10 @@ public:
     };
 
     static std::string formCreateTableQuery();
-    static std::string formUpdateCountByIdQuery(size_t count, size_t id);
-    static std::string formInsertRowQuery(const MaterialRow& row);
     static std::string formSelectRowQuery();
-    static std::string formSelectRowByNameQuery(const std::string& name);
-    static std::string formSelectRowByIdQuery(size_t id);
+    static std::string formInsertRowQuery(const MaterialRow& row);
+    static std::string formUpdateRowQuery(std::int64_t id, const MaterialRow& material);
+    static std::string formDeleteRowQuery(std::int64_t id);
 
     static constexpr std::string_view TABLE_NAME = "materials";
     static std::vector<ColumnType> COLUMNS;

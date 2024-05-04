@@ -15,9 +15,8 @@ std::string MaterialsTable::formCreateTableQuery() {
     return DatabaseManagerTools::formCreateTableQuery(TABLE_NAME.data(), COLUMNS);
 }
 
-std::string MaterialsTable::formUpdateCountByIdQuery(size_t count, size_t id) {
-    const auto return_str = fmt::format("UPDATE {} SET count = {} WHERE material_id = {};",
-                                        TABLE_NAME, count, id);
+std::string MaterialsTable::formSelectRowQuery() {
+    const auto return_str = fmt::format("SELECT * FROM {};", TABLE_NAME);
     return return_str;
 }
 
@@ -29,18 +28,20 @@ std::string MaterialsTable::formInsertRowQuery(const MaterialRow& row) {
     return return_str;
 }
 
-std::string MaterialsTable::formSelectRowQuery() {
-    const auto return_str = fmt::format("SELECT * FROM {};", TABLE_NAME);
+std::string MaterialsTable::formUpdateRowQuery(std::int64_t id, const MaterialRow& material) {
+    const auto return_str = fmt::format(
+        "UPDATE {} SET "
+        "name = '{}', "
+        "count = '{}', "
+        "suffix = {} "
+        "WHERE material_id = {};",
+        TABLE_NAME, material.name, material.count,
+        (material.suffix) ? (fmt::format("\"{}\"", *material.suffix)) : ("NULL"), id);
     return return_str;
 }
 
-std::string MaterialsTable::formSelectRowByNameQuery(const std::string& name) {
-    const auto return_str = fmt::format("SELECT * FROM {} WHERE name == \"{}\";", TABLE_NAME, name);
-    return return_str;
-}
+std::string MaterialsTable::formDeleteRowQuery(std::int64_t id) {
+    const auto return_str = fmt::format("DELETE FROM {} WHERE material_id = {};", TABLE_NAME, id);
 
-std::string MaterialsTable::formSelectRowByIdQuery(size_t id) {
-    const auto return_str = fmt::format("SELECT * FROM {} WHERE material_id == \"{}\";", TABLE_NAME,
-                                        id);
     return return_str;
 }

@@ -21,7 +21,7 @@ public:
 
     static std::string formCreateTableQuery();
     static std::string formInsertRowQuery(const UserRow& row);
-    static std::string formSelectByTelegramIdQuery(std::int64_t telegram_id);
+    static std::string formSelectRowQuery();
 
     static constexpr std::string_view TABLE_NAME = "users";
     static std::vector<ColumnType> COLUMNS;
