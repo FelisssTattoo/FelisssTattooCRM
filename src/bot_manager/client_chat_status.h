@@ -2,7 +2,11 @@
 
 #include <database_manager/database_manager.h>
 
+#include <tgbot/tgbot.h>
+
 struct ClientChatStatus {
+    TgBot::InlineKeyboardMarkup::Ptr current_menu;
+
     MaterialsTable::MaterialRow updating_material{};
     bool do_user_type_material_name        = false;
     bool do_user_specify_material_suffix   = false;

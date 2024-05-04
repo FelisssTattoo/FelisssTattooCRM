@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-TgBot::InlineKeyboardMarkup::Ptr BotManager::mAdminMainMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr BotManager::mMainMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMaterialsMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseMaterialMenu(new TgBot::InlineKeyboardMarkup);
 
@@ -43,7 +43,7 @@ void BotManager::initMenus() {
     TgBot::InlineKeyboardButton::Ptr materials_button(new TgBot::InlineKeyboardButton);
     materials_button->text         = "Матеріали";
     materials_button->callbackData = "materials";
-    mAdminMainMenu->inlineKeyboard.push_back({materials_button});
+    mMainMenu->inlineKeyboard.push_back({materials_button});
 
     TgBot::InlineKeyboardButton::Ptr materials_menu_add_material(new TgBot::InlineKeyboardButton);
     TgBot::InlineKeyboardButton::Ptr materials_menu_delete_material(
@@ -66,16 +66,41 @@ void BotManager::initMenus() {
     mMaterialsMenu->inlineKeyboard.push_back({materials_menu_back});
 }
 
+void BotManager::sendMessage(const TgBot::Message::Ptr& recv_message, const std::string& message) {
+    mBotHandler.getApi().sendMessage(recv_message->chat->id, message, false, 0, nullptr,
+                                     PARSE_MODE.data());
+}
+
+void BotManager::sendMenuWithMessage(const TgBot::Message::Ptr& recv_message,
+                                     const TgBot::GenericReply::Ptr& replyMarkup,
+                                     const std::string& message) {
+    mBotHandler.getApi().sendMessage(recv_message->chat->id, message, false, 0, replyMarkup,
+                                     PARSE_MODE.data());
+}
+
+void BotManager::sendCurrentMenuWithMessage(const TgBot::Message::Ptr& recv_message,
+                                            const std::string& message) {
+    const auto chat_status = getClientChatStatus(recv_message);
+    sendMenuWithMessage(recv_message, chat_status->current_menu, message);
+}
+
+void BotManager::editCurrentMenuWithMessage(const TgBot::Message::Ptr& recv_message,
+                                            const std::string& message) {
+    const auto chat_status = getClientChatStatus(recv_message);
+    mBotHandler.getApi().editMessageText(message, recv_message->chat->id, recv_message->messageId,
+                                         "", PARSE_MODE.data(), false, chat_status->current_menu);
+}
+
 void BotManager::callbackOnStartCommand(const TgBot::Message::Ptr& message) {
     if (!checkIfTelegramIdIsAdmin(message->from->id)) {
-        mBotHandler.getApi().sendMessage(
-            message->chat->id,
-            "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
+        sendMessage(message,
+                    "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
         return;
     }
 
-    mBotHandler.getApi().sendMessage(message->chat->id, "Виберіть пункт:", false, 0, mAdminMainMenu,
-                                     "Markdown");
+    const auto chat_status    = getClientChatStatus(message);
+    chat_status->current_menu = mMainMenu;
+    sendCurrentMenuWithMessage(message, "Виберіть пункт:");
 }
 
 void BotManager::callbackOnMakeMeAdminCommand(const TgBot::Message::Ptr& message) {
@@ -83,10 +108,10 @@ void BotManager::callbackOnMakeMeAdminCommand(const TgBot::Message::Ptr& message
     const auto user           = mDatabaseManager.getUserByTelegramId(telegram_id);
 
     if (checkIfTelegramIdIsAdmin(telegram_id)) {
-        mBotHandler.getApi().sendMessage(message->chat->id, "Ти вже адмін");
+        sendMessage(message, "Ти вже адмін");
     } else {
         mDatabaseManager.addAdmin(user.value());
-        mBotHandler.getApi().sendMessage(message->chat->id, "Тепер ти адмін");
+        sendMessage(message, "Тепер ти адмін");
     }
 }
 
@@ -95,10 +120,10 @@ void BotManager::callbackOnMakeMeTattooArtistCommand(const TgBot::Message::Ptr& 
     const auto user           = mDatabaseManager.getUserByTelegramId(telegram_id);
 
     if (checkIfTelegramIdIsTattooArtist(telegram_id)) {
-        mBotHandler.getApi().sendMessage(message->chat->id, "Ти вже тату майстер");
+        sendMessage(message, "Ти вже тату майстер");
     } else {
         mDatabaseManager.addTattooArtist(user.value());
-        mBotHandler.getApi().sendMessage(message->chat->id, "Тепер ти тату майстер");
+        sendMessage(message, "Тепер ти тату майстер");
     }
 }
 
@@ -113,21 +138,18 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
         }
 
         if (!checkIfTelegramIdIsAdmin(message->from->id)) {
-            mBotHandler.getApi().sendMessage(
-                message->chat->id,
-                "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
+            sendMessage(message,
+                        "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
             return;
         }
 
-        auto client_status = getClientChatStatus(message->from->id);
+        const auto client_status = getClientChatStatus(message);
 
         if (client_status->do_user_type_material_name) {
             client_status->do_user_type_material_name = false;
             if (!DatabaseManagerTools::validateUserInput(message->text)) {
-                mBotHandler.getApi().sendMessage(
-                    message->chat->id, "На жаль сталась помилка. Зверніться до адміністратора");
-                mBotHandler.getApi().sendMessage(message->chat->id, "Виберіть пункт:", false, 0,
-                                                 mMaterialsMenu, "Markdown");
+                sendMessage(message, "На жаль сталась помилка. Зверніться до адміністратора");
+                sendCurrentMenuWithMessage(message, "Виберіть пункт:");
                 return;
             }
             const auto find_result = mDatabaseManager.getMaterialByName(message->text);
@@ -135,9 +157,8 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 const auto send_str = fmt::format("Наразі {} {}{} вже в базі даних",
                                                   find_result->name, find_result->count,
                                                   find_result->suffix.value_or(""));
-                mBotHandler.getApi().sendMessage(message->chat->id, send_str);
-                mBotHandler.getApi().sendMessage(message->chat->id, "Виберіть пункт:", false, 0,
-                                                 mMaterialsMenu, "Markdown");
+                sendMessage(message, send_str);
+                sendCurrentMenuWithMessage(message, "Виберіть пункт:");
                 return;
             }
 
@@ -148,7 +169,10 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 new TgBot::ReplyKeyboardMarkup);
             static bool isFirstTime = true;
             if (isFirstTime) {
-                isFirstTime = false;
+                isFirstTime                                     = false;
+                material_suffix_reply_keyboard->isPersistent    = false;
+                material_suffix_reply_keyboard->oneTimeKeyboard = true;
+
                 TgBot::KeyboardButton::Ptr material_suffix_no_suffix_button(
                     new TgBot::KeyboardButton);
                 material_suffix_no_suffix_button->text = "Матеріал не має одиниці виміру";
@@ -157,10 +181,8 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 material_suffix_reply_keyboard->keyboard.push_back(
                     {material_suffix_no_suffix_button});
             }
-
-            mBotHandler.getApi().sendMessage(message->chat->id,
-                                             "В чому вимірюється одиниця матеріалу?", false, 0,
-                                             material_suffix_reply_keyboard);
+            sendMenuWithMessage(message, material_suffix_reply_keyboard,
+                                "В чому вимірюється одиниця матеріалу?");
         } else if (client_status->do_user_specify_material_suffix) {
             client_status->do_user_specify_material_suffix = false;
             client_status->do_user_specify_material_count  = true;
@@ -168,17 +190,14 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             if (message->text != "Матеріал не має одиниці виміру") {
                 client_status->updating_material.suffix = message->text;
             }
-            mBotHandler.getApi().sendMessage(message->chat->id,
-                                             "Скільки зараз одиниць матеріалу в салоні?");
+            sendMessage(message, "Скільки зараз одиниць матеріалу в салоні?");
         } else if (client_status->do_user_specify_material_count) {
             client_status->do_user_specify_material_count = false;
             try {
                 client_status->updating_material.count = std::stod(message->text);
             } catch (const std::exception& e) {
-                mBotHandler.getApi().sendMessage(
-                    message->chat->id, "На жаль сталась помилка. Зверніться до адміністратора");
-                mBotHandler.getApi().sendMessage(message->chat->id, "Виберіть пункт:", false, 0,
-                                                 mMaterialsMenu, "Markdown");
+                sendMessage(message, "На жаль сталась помилка. Зверніться до адміністратора");
+                sendCurrentMenuWithMessage(message, "Виберіть пункт:");
                 SPDLOG_ERROR("{}", e.what());
                 return;
             }
@@ -187,23 +206,19 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                     "{} {}{} внесено в базу даних", client_status->updating_material.name,
                     client_status->updating_material.count,
                     client_status->updating_material.suffix.value_or(""));
-                mBotHandler.getApi().sendMessage(message->chat->id, send_str);
+                sendMessage(message, send_str);
             } else {
-                mBotHandler.getApi().sendMessage(
-                    message->chat->id, "На жаль сталась помилка. Зверніться до адміністратора");
+                sendMessage(message, "На жаль сталась помилка. Зверніться до адміністратора");
             }
-            mBotHandler.getApi().sendMessage(message->chat->id, "Виберіть пункт:", false, 0,
-                                             mMaterialsMenu, "Markdown");
+            sendCurrentMenuWithMessage(message, "Виберіть пункт:");
         } else if (client_status->do_user_update_material_count) {
             client_status->do_user_update_material_count = false;
             try {
                 client_status->updating_material.count = std::stod(message->text);
             } catch (const std::exception& e) {
-                mBotHandler.getApi().sendMessage(
-                    message->chat->id, "На жаль сталась помилка. Зверніться до адміністратора");
+                sendMessage(message, "На жаль сталась помилка. Зверніться до адміністратора");
                 SPDLOG_ERROR("{}", e.what());
-                mBotHandler.getApi().sendMessage(message->chat->id, "Виберіть пункт:", false, 0,
-                                                 mMaterialsMenu, "Markdown");
+                sendCurrentMenuWithMessage(message, "Виберіть пункт:");
                 return;
             }
 
@@ -215,23 +230,21 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                     "{} {}{} оновлено в базі даних", client_status->updating_material.name,
                     client_status->updating_material.count,
                     client_status->updating_material.suffix.value_or(""));
-                mBotHandler.getApi().sendMessage(message->chat->id, send_str);
+                sendMessage(message, send_str);
             } else {
-                mBotHandler.getApi().sendMessage(
-                    message->chat->id, "На жаль сталась помилка. Зверніться до адміністратора");
+                sendMessage(message, "На жаль сталась помилка. Зверніться до адміністратора");
             }
 
-            mBotHandler.getApi().sendMessage(message->chat->id, "Виберіть пункт:", false, 0,
-                                             mMaterialsMenu, "Markdown");
+            updateChooseMaterialMenu();
         } else {
-            mBotHandler.getApi().sendMessage(message->chat->id, "Невідомий статус чату");
+            sendMessage(message, "Невідомий статус чату");
         }
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
-        mBotHandler.getApi().sendMessage(
-            message->chat->id,
-            "На жаль сталося помилка. Спробуйте ще раз або зверніться до адміністратора");
+        sendMessage(message,
+                    "На жаль сталося помилка. Спробуйте ще раз або зверніться до адміністратора");
     }
+    sendCurrentMenuWithMessage(message, "Виберіть пункт:");
 }
 
 void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query) {
@@ -239,62 +252,23 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
         spdlog::info("\"{}\" applied callback with data \"{}\"", query->message->chat->username,
                      query->data);
         if (!checkIfTelegramIdIsAdmin(query->from->id)) {
-            mBotHandler.getApi().sendMessage(
-                query->from->id,
-                "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
+            sendMessage(query->message,
+                        "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
             return;
         }
 
-        auto client_status = getClientChatStatus(query->from->id);
-        static constexpr std::string_view material_prefix("material_id_");
+        auto client_status = getClientChatStatus(query->message);
         if (query->data == "main_menu") {
-            mBotHandler.getApi().editMessageText("Виберіть пункт:", query->message->chat->id,
-                                                 query->message->messageId, "", "Markdown", false,
-                                                 mAdminMainMenu);
+            client_status->current_menu = mMainMenu;
+            editCurrentMenuWithMessage(query->message, "Виберіть пункт:");
         } else if (query->data == "materials") {
-            mBotHandler.getApi().editMessageText("Виберіть пункт:", query->message->chat->id,
-                                                 query->message->messageId, "", "Markdown", false,
-                                                 mMaterialsMenu);
+            client_status->current_menu = mMaterialsMenu;
+            editCurrentMenuWithMessage(query->message, "Виберіть пункт:");
         } else if (query->data == "add_material") {
-            mBotHandler.getApi().sendMessage(query->message->chat->id, "Як називається матеріал?");
+            sendMessage(query->message, "Як називається матеріал?");
             client_status->do_user_type_material_name = true;
         } else if (query->data == "delete_material" || query->data == "modify_material") {
-            const size_t max_columns_size = 1;
-            mChooseMaterialMenu->inlineKeyboard.clear();
-
-            const auto materials = mDatabaseManager.getMaterials();
-            size_t i             = 0;
-            for (; i < materials.size() - materials.size() % max_columns_size;
-                 i += max_columns_size) {
-                std::vector<TgBot::InlineKeyboardButton::Ptr> row;
-                for (size_t j = 0; j < max_columns_size; ++j) {
-                    TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
-                    const auto material  = materials.at(i + j);
-                    button->text         = fmt::format("{} {}{}", material.name, material.count,
-                                                       material.suffix.value_or(""));
-                    button->callbackData = fmt::format("material_id_{}", material.id.value());
-                    row.push_back(button);
-                }
-                mChooseMaterialMenu->inlineKeyboard.push_back(row);
-            }
-            if (i < materials.size()) {
-                std::vector<TgBot::InlineKeyboardButton::Ptr> last_row;
-                for (; i < materials.size(); ++i) {
-                    TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
-                    auto material        = materials.at(i);
-                    button->text         = fmt::format("{} {}{}", material.name, material.count,
-                                                       material.suffix.value_or(""));
-                    button->callbackData = fmt::format("{}{}", material_prefix,
-                                                       material.id.value());
-                    last_row.push_back(button);
-                }
-                mChooseMaterialMenu->inlineKeyboard.push_back(last_row);
-            }
-
-            TgBot::InlineKeyboardButton::Ptr back_button(new TgBot::InlineKeyboardButton);
-            back_button->text         = "<< Назад в меню";
-            back_button->callbackData = "materials";
-            mChooseMaterialMenu->inlineKeyboard.push_back({back_button});
+            updateChooseMaterialMenu();
 
             if (query->data == "delete_material") {
                 client_status->do_user_choose_to_delete_material = true;
@@ -304,12 +278,11 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                 client_status->do_user_choose_to_delete_material = false;
             }
 
-            mBotHandler.getApi().editMessageText("Виберіть пункт:", query->message->chat->id,
-                                                 query->message->messageId, "", "Markdown", false,
-                                                 mChooseMaterialMenu);
-        } else if (StringTools::startsWith(query->data, material_prefix.data())) {
+            client_status->current_menu = mChooseMaterialMenu;
+            editCurrentMenuWithMessage(query->message, "Виберіть пункт:");
+        } else if (StringTools::startsWith(query->data, MATERIAL_PREFIX.data())) {
             std::string data_str(query->data);
-            data_str.erase(0, material_prefix.length());
+            data_str.erase(0, MATERIAL_PREFIX.length());
 
             client_status->updating_material.id = std::stoll(data_str);
 
@@ -319,50 +292,48 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                 client_status->updating_material
                     = mDatabaseManager.getMaterialById(client_status->updating_material.id.value())
                           .value();
-                mBotHandler.getApi().sendMessage(
-                    query->message->chat->id,
-                    fmt::format("Введіть нову кількість для {} {}{}",
-                                client_status->updating_material.name,
-                                client_status->updating_material.count,
-                                client_status->updating_material.suffix.value_or("")));
+                const auto send_message = fmt::format(
+                    "Введіть нову кількість для {} {}{}", client_status->updating_material.name,
+                    client_status->updating_material.count,
+                    client_status->updating_material.suffix.value_or(""));
+                sendMessage(query->message, send_message);
             } else if (client_status->do_user_choose_to_delete_material) {
                 if (mDatabaseManager.deleteMaterialById(
                         client_status->updating_material.id.value())) {
-                    mBotHandler.getApi().sendMessage(
-                        query->message->chat->id,
-                        fmt::format("{} {}{} видалено успішно",
-                                    client_status->updating_material.name,
-                                    client_status->updating_material.count,
-                                    client_status->updating_material.suffix.value_or("")));
+                    const auto send_message = fmt::format(
+                        "{} {}{} видалено успішно", client_status->updating_material.name,
+                        client_status->updating_material.count,
+                        client_status->updating_material.suffix.value_or(""));
+                    sendMessage(query->message, send_message);
                 } else {
-                    mBotHandler.getApi().sendMessage(
-                        query->message->chat->id,
-                        fmt::format(
-                            "На жаль не вдалося видалити {} {}{}. Зверніться до адміністратора!",
-                            client_status->updating_material.name,
-                            client_status->updating_material.count,
-                            client_status->updating_material.suffix.value_or("")));
+                    const auto send_message = fmt::format(
+                        "На жаль не вдалося видалити {} {}{}. Зверніться до адміністратора!",
+                        client_status->updating_material.name,
+                        client_status->updating_material.count,
+                        client_status->updating_material.suffix.value_or(""));
+                    sendMessage(query->message, send_message);
                 }
-                mBotHandler.getApi().sendMessage(query->message->chat->id, "Виберіть пункт:", false,
-                                                 0, mMaterialsMenu, "Markdown");
+                updateChooseMaterialMenu();
+                sendCurrentMenuWithMessage(query->message, "Виберіть пункт:");
             }
         }
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
-        mBotHandler.getApi().sendMessage(
-            query->message->chat->id,
-            "На жаль сталося помилка. Спробуйте ще раз або зверніться до адміністратора");
+        sendMessage(query->message,
+                    "На жаль сталося помилка. Спробуйте ще раз або зверніться до адміністратора");
     }
 }
 
-std::shared_ptr<ClientChatStatus> BotManager::getClientChatStatus(int64_t client_id) {
+std::shared_ptr<ClientChatStatus>
+BotManager::getClientChatStatus(const TgBot::Message::Ptr& message) {
     std::shared_ptr<ClientChatStatus> ret_value;
-    const auto it = mClientChatStatuses.find(client_id);
+    const auto it = mClientChatStatuses.find(message->chat->id);
     if (it != mClientChatStatuses.end()) {
         ret_value = it->second;
     } else {
         std::shared_ptr<ClientChatStatus> created_ptr(new ClientChatStatus);
-        mClientChatStatuses.insert({client_id, created_ptr});
+        created_ptr->current_menu = mMainMenu;
+        mClientChatStatuses.insert({message->chat->id, created_ptr});
         ret_value = created_ptr;
     }
 
@@ -406,4 +377,41 @@ bool BotManager::checkIfTelegramIdIsTattooArtist(std::int64_t telegram_id) {
                                               return (user_row.telegram_id == telegram_id);
                                           });
     return (found_admin != all_tattoo_artists.end());
+}
+
+void BotManager::updateChooseMaterialMenu() {
+    const size_t max_columns_size = 1;
+    mChooseMaterialMenu->inlineKeyboard.clear();
+
+    const auto materials = mDatabaseManager.getMaterials();
+    size_t i             = 0;
+    for (; i < materials.size() - materials.size() % max_columns_size; i += max_columns_size) {
+        std::vector<TgBot::InlineKeyboardButton::Ptr> row;
+        for (size_t j = 0; j < max_columns_size; ++j) {
+            TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+            const auto material  = materials.at(i + j);
+            button->text         = fmt::format("{} {}{}", material.name, material.count,
+                                               material.suffix.value_or(""));
+            button->callbackData = fmt::format("material_id_{}", material.id.value());
+            row.push_back(button);
+        }
+        mChooseMaterialMenu->inlineKeyboard.push_back(row);
+    }
+    if (i < materials.size()) {
+        std::vector<TgBot::InlineKeyboardButton::Ptr> last_row;
+        for (; i < materials.size(); ++i) {
+            TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+            auto material        = materials.at(i);
+            button->text         = fmt::format("{} {}{}", material.name, material.count,
+                                               material.suffix.value_or(""));
+            button->callbackData = fmt::format("{}{}", MATERIAL_PREFIX, material.id.value());
+            last_row.push_back(button);
+        }
+        mChooseMaterialMenu->inlineKeyboard.push_back(last_row);
+    }
+
+    TgBot::InlineKeyboardButton::Ptr back_button(new TgBot::InlineKeyboardButton);
+    back_button->text         = "<< Назад в меню";
+    back_button->callbackData = "materials";
+    mChooseMaterialMenu->inlineKeyboard.push_back({back_button});
 }
