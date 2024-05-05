@@ -8,6 +8,8 @@
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMainMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMaterialsMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseMaterialMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr
+    BotManager::mChooseMaterialAlarmUserMenu(new TgBot::InlineKeyboardMarkup);
 
 BotManager::BotManager(const std::string& token) :
     mToken(token), mBotHandler(token), mLongPoll(mBotHandler), mDatabaseManager(DATABASE_PATHNAME) {
@@ -50,6 +52,8 @@ void BotManager::initMenus() {
         new TgBot::InlineKeyboardButton);
     TgBot::InlineKeyboardButton::Ptr materials_menu_modify_material(
         new TgBot::InlineKeyboardButton);
+    TgBot::InlineKeyboardButton::Ptr materials_menu_modify_alarm_users(
+        new TgBot::InlineKeyboardButton);
     TgBot::InlineKeyboardButton::Ptr materials_menu_back(new TgBot::InlineKeyboardButton);
     materials_menu_add_material->text            = "Додати матеріал";
     materials_menu_add_material->callbackData    = "add_material";
@@ -57,12 +61,15 @@ void BotManager::initMenus() {
     materials_menu_delete_material->callbackData = "delete_material";
     materials_menu_modify_material->text = "Оновити кількість матеріалу";
     materials_menu_modify_material->callbackData = "modify_material";
-    materials_menu_back->text                    = "<< Назад в меню";
-    materials_menu_back->callbackData            = "main_menu";
+    materials_menu_modify_alarm_users->text = "Налаштування користувачів із сповіщеннями";
+    materials_menu_modify_alarm_users->callbackData = "modify_alarm_users";
+    materials_menu_back->text                       = "<< Назад в меню";
+    materials_menu_back->callbackData               = "main_menu";
 
     mMaterialsMenu->inlineKeyboard.push_back(
         {materials_menu_add_material, materials_menu_delete_material});
     mMaterialsMenu->inlineKeyboard.push_back({materials_menu_modify_material});
+    mMaterialsMenu->inlineKeyboard.push_back({materials_menu_modify_alarm_users});
     mMaterialsMenu->inlineKeyboard.push_back({materials_menu_back});
 }
 
@@ -147,7 +154,7 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
     try {
         insertUserInTableIfNotExists(message);
 
-        spdlog::info("{} wrote \"{}\"", formUserInfoStrFromMessage(message->from), message->text);
+        spdlog::info("{} wrote \"{}\"", formUserInfoStr(message->from), message->text);
 
         if (StringTools::startsWith(message->text, "/")) {
             return;
@@ -266,8 +273,8 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
 
 void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query) {
     try {
-        spdlog::info("{} applied callback with data \"{}\"",
-                     formUserInfoStrFromMessage(query->from), query->data);
+        spdlog::info("{} applied callback with data \"{}\"", formUserInfoStr(query->from),
+                     query->data);
         if (!checkIfTelegramIdIsAdmin(query->from->id)) {
             sendMessage(query->message,
                         "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
@@ -297,9 +304,9 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
 
             client_status->current_menu = mChooseMaterialMenu;
             editCurrentMenu(query->message);
-        } else if (StringTools::startsWith(query->data, MATERIAL_PREFIX.data())) {
+        } else if (StringTools::startsWith(query->data, CHOOSE_MATERIAL_PREFIX.data())) {
             std::string data_str(query->data);
-            data_str.erase(0, MATERIAL_PREFIX.length());
+            data_str.erase(0, CHOOSE_MATERIAL_PREFIX.length());
 
             client_status->updating_material.id = std::stoll(data_str);
 
@@ -335,6 +342,46 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                 updateChooseMaterialMenu();
                 sendCurrentMenu(query->message);
             }
+        } else if (query->data == "modify_alarm_users") {
+            updateChooseMaterialAlarmUserMenu();
+            client_status->current_menu = mChooseMaterialAlarmUserMenu;
+            editCurrentMenu(query->message);
+        } else if (StringTools::startsWith(query->data, CHOOSE_MATERIAL_ALARM_USER_PREFIX.data())) {
+            std::string data_str(query->data);
+            data_str.erase(0, CHOOSE_MATERIAL_ALARM_USER_PREFIX.length());
+
+            const auto switch_alarm_user_id = std::stoll(data_str);
+            const auto material_alarm_users = mDatabaseManager.getMaterialAlarmUsers();
+            const bool isAlarmOn            = std::any_of(material_alarm_users.begin(),
+                                                          material_alarm_users.end(),
+                                                          [switch_alarm_user_id](const auto& alarm_user) {
+                                                   return (switch_alarm_user_id == alarm_user.id);
+                                               });
+            const auto users                = mDatabaseManager.getUsers();
+            const auto found_user           = std::find_if(users.begin(), users.end(),
+                                                           [switch_alarm_user_id](const auto& user) {
+                                                     return (user.id == switch_alarm_user_id);
+                                                 });
+            bool is_operation_okay          = false;
+            if (isAlarmOn) {
+                if (mDatabaseManager.deleteMaterialAlarmUserById(switch_alarm_user_id)) {
+                    sendMessage(query->message, fmt::format("{} прибрано із системи сповіщень",
+                                                            formUserInfoStr(*found_user)));
+                    is_operation_okay = true;
+                }
+            } else {
+                if (mDatabaseManager.addMaterialAlarmUser(*found_user)) {
+                    sendMessage(query->message, fmt::format("{} додано до системи сповіщень",
+                                                            formUserInfoStr(*found_user)));
+                    is_operation_okay = true;
+                }
+            }
+            if (!is_operation_okay) {
+                sendMessage(query->message, "На жаль сталася помилка. Спробуйте ще раз або "
+                                            "зверніться до адміністартора");
+            }
+            updateChooseMaterialAlarmUserMenu();
+            sendCurrentMenu(query->message);
         }
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
@@ -374,7 +421,8 @@ void BotManager::updateChooseMaterialMenu() {
             const auto material  = materials.at(i + j);
             button->text         = fmt::format("{} {}{}", material.name, material.count,
                                                material.suffix.value_or(""));
-            button->callbackData = fmt::format("material_id_{}", material.id.value());
+            button->callbackData = fmt::format("{}{}", CHOOSE_MATERIAL_PREFIX.data(),
+                                               material.id.value());
             row.push_back(button);
         }
         mChooseMaterialMenu->inlineKeyboard.push_back(row);
@@ -386,7 +434,7 @@ void BotManager::updateChooseMaterialMenu() {
             auto material        = materials.at(i);
             button->text         = fmt::format("{} {}{}", material.name, material.count,
                                                material.suffix.value_or(""));
-            button->callbackData = fmt::format("{}{}", MATERIAL_PREFIX, material.id.value());
+            button->callbackData = fmt::format("{}{}", CHOOSE_MATERIAL_PREFIX, material.id.value());
             last_row.push_back(button);
         }
         mChooseMaterialMenu->inlineKeyboard.push_back(last_row);
@@ -396,6 +444,30 @@ void BotManager::updateChooseMaterialMenu() {
     back_button->text         = "<< Назад в меню";
     back_button->callbackData = "materials";
     mChooseMaterialMenu->inlineKeyboard.push_back({back_button});
+}
+
+void BotManager::updateChooseMaterialAlarmUserMenu() {
+    mChooseMaterialAlarmUserMenu->inlineKeyboard.clear();
+
+    const auto admins               = mDatabaseManager.getAdmins();
+    const auto material_alarm_users = mDatabaseManager.getMaterialAlarmUsers();
+    for (const auto& admin : admins) {
+        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        const bool isAlarmOn = std::any_of(material_alarm_users.begin(), material_alarm_users.end(),
+                                           [&admin](const auto& alarm_user) {
+                                               return (admin.id.value() == alarm_user.id.value());
+                                           });
+        button->text         = fmt::format("{} - {} сповіщення", formUserInfoStr(admin),
+                                   (isAlarmOn) ? ("вимкнути") : ("ввімкнути"));
+        button->callbackData = fmt::format("{}{}", CHOOSE_MATERIAL_ALARM_USER_PREFIX.data(),
+                                           admin.id.value());
+        mChooseMaterialAlarmUserMenu->inlineKeyboard.push_back({button});
+    }
+
+    TgBot::InlineKeyboardButton::Ptr back_button(new TgBot::InlineKeyboardButton);
+    back_button->text         = "<< Назад в меню";
+    back_button->callbackData = "materials";
+    mChooseMaterialAlarmUserMenu->inlineKeyboard.push_back({back_button});
 }
 
 std::shared_ptr<ClientChatStatus>
@@ -449,6 +521,8 @@ BotManager::getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu) {
         ret_message.append("Виберіть пункт:");
     } else if (menu == mChooseMaterialMenu) {
         ret_message = "Виберіть пункт:";
+    } else if (menu == mChooseMaterialAlarmUserMenu) {
+        ret_message = "Виберіть адміна:";
     } else {
         SPDLOG_ERROR("Нема відповідного меню");
         return {};
@@ -456,13 +530,26 @@ BotManager::getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu) {
     return ret_message;
 }
 
-std::string BotManager::formUserInfoStrFromMessage(const TgBot::User::Ptr& user) {
-    std::string ret_str(user->firstName);
+std::string BotManager::formUserInfoStr(const TgBot::User::Ptr& user) {
+    UsersTable::UserRow user_row;
+    user_row.name = user->firstName;
     if (user->lastName.length()) {
-        ret_str.append(fmt::format(" {}", user->lastName));
+        user_row.surname = user->lastName;
     }
     if (user->username.length()) {
-        ret_str.append(fmt::format("(@{})", user->username));
+        user_row.telegram = user->username;
+    }
+
+    return formUserInfoStr(user_row);
+}
+
+std::string BotManager::formUserInfoStr(const UsersTable::UserRow& user) {
+    std::string ret_str(user.name);
+    if (user.surname) {
+        ret_str.append(fmt::format(" {}", user.surname.value()));
+    }
+    if (user.telegram) {
+        ret_str.append(fmt::format("(@{})", user.telegram.value()));
     }
 
     return ret_str;

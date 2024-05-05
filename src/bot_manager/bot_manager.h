@@ -37,12 +37,14 @@ private:
     bool checkIfTelegramIdIsTattooArtist(std::int64_t telegram_id);
 
     void updateChooseMaterialMenu();
+    void updateChooseMaterialAlarmUserMenu();
 
     std::shared_ptr<ClientChatStatus> getClientChatStatus(const TgBot::Message::Ptr& message);
     void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
     UsersTable::UserRow scrapUserDataFromMessage(const TgBot::Message::Ptr& message);
     std::optional<std::string> getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu);
-    std::string formUserInfoStrFromMessage(const TgBot::User::Ptr& user);
+    std::string formUserInfoStr(const TgBot::User::Ptr& user);
+    std::string formUserInfoStr(const UsersTable::UserRow& user_row);
 
 private:
     const std::string_view mToken;
@@ -58,7 +60,9 @@ private:
     static TgBot::InlineKeyboardMarkup::Ptr mMainMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mMaterialsMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialAlarmUserMenu;
 
-    static constexpr std::string_view PARSE_MODE      = "HTML";
-    static constexpr std::string_view MATERIAL_PREFIX = "material_id_";
+    static constexpr std::string_view PARSE_MODE                        = "HTML";
+    static constexpr std::string_view CHOOSE_MATERIAL_PREFIX            = "material_id_";
+    static constexpr std::string_view CHOOSE_MATERIAL_ALARM_USER_PREFIX = "material_alarm_user_id_";
 };

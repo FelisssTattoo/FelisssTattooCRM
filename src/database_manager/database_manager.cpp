@@ -10,11 +10,13 @@ DatabaseManager::DatabaseManager(std::string_view db_pathname) :
     isAdminsVectorUpdated(false),
     isTattooArtistsVectorUpdated(false),
     isUsersVectorUpdated(false),
-    isMaterialsVectorUpdated(false) {
+    isMaterialsVectorUpdated(false),
+    isMaterialAlarmUsersVectorUpdated(false) {
     initUsersTable();
     initMaterialsTable();
     initAdminsTable();
     initTattooArtistsTable();
+    initMaterialAlarmUsersTable();
 }
 
 bool DatabaseManager::addUser(const UsersTable::UserRow& user_row) {
@@ -132,6 +134,55 @@ std::vector<UsersTable::UserRow> DatabaseManager::getTattooArtists() {
     return tattoo_artists_vector;
 }
 
+bool DatabaseManager::addMaterialAlarmUser(const UsersTable::UserRow& user_row) {
+    MaterialAlarmUsersTable::MaterialAlarmUserRow row = {.user_id = user_row.id.value()};
+    try {
+        const bool is_okay = mDbHandler.exec(MaterialAlarmUsersTable::formInsertRowQuery(row));
+        if (is_okay) {
+            isMaterialAlarmUsersVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+bool DatabaseManager::deleteMaterialAlarmUserById(std::int64_t id) {
+    try {
+        const bool is_okay = mDbHandler.exec(MaterialAlarmUsersTable::formDeleteRowQuery(id));
+        if (is_okay) {
+            isMaterialAlarmUsersVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+std::vector<UsersTable::UserRow> DatabaseManager::getMaterialAlarmUsers() {
+    static std::vector<UsersTable::UserRow> material_alarm_users_vector;
+
+    if (!isMaterialAlarmUsersVectorUpdated) {
+        material_alarm_users_vector.clear();
+
+        const auto return_str = fmt::format("SELECT u.* "
+                                            "FROM {} u "
+                                            "INNER JOIN {} m ON u.user_id = m.user_id;",
+                                            UsersTable::TABLE_NAME,
+                                            MaterialAlarmUsersTable::TABLE_NAME);
+        SQLite::Statement query(mDbHandler, return_str);
+        while (query.executeStep()) {
+            material_alarm_users_vector.push_back(getUserRowFromStatement(query));
+        }
+
+        isMaterialAlarmUsersVectorUpdated = true;
+    }
+
+    return material_alarm_users_vector;
+}
+
 bool DatabaseManager::addMaterial(const MaterialsTable::MaterialRow& material_row) {
     try {
         const bool is_okay = mDbHandler.exec(MaterialsTable::formInsertRowQuery(material_row));
@@ -246,6 +297,14 @@ void DatabaseManager::initAdminsTable() {
 void DatabaseManager::initTattooArtistsTable() {
     try {
         mDbHandler.exec(TattooArtistsTable::formCreateTableQuery());
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+    }
+}
+
+void DatabaseManager::initMaterialAlarmUsersTable() {
+    try {
+        mDbHandler.exec(MaterialAlarmUsersTable::formCreateTableQuery());
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
     }

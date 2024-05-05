@@ -1,6 +1,7 @@
 #pragma once
 
 #include "admins_table.h"
+#include "material_alarm_users.h"
 #include "materials_table.h"
 #include "tattoo_artists_table.h"
 #include "users_table.h"
@@ -21,6 +22,10 @@ public:
     bool addTattooArtist(const UsersTable::UserRow& user_row);
     std::vector<UsersTable::UserRow> getTattooArtists();
 
+    bool addMaterialAlarmUser(const UsersTable::UserRow& user_row);
+    bool deleteMaterialAlarmUserById(std::int64_t id);
+    std::vector<UsersTable::UserRow> getMaterialAlarmUsers();
+
     bool addMaterial(const MaterialsTable::MaterialRow& material_row);
     bool updateMaterialCountById(std::int64_t id, const MaterialsTable::MaterialRow& material_row);
     bool deleteMaterialById(std::int64_t id);
@@ -33,6 +38,7 @@ private:
     void initMaterialsTable();
     void initAdminsTable();
     void initTattooArtistsTable();
+    void initMaterialAlarmUsersTable();
 
     UsersTable::UserRow getUserRowFromStatement(SQLite::Statement& statement);
     MaterialsTable::MaterialRow getMaterialRowFromStatement(SQLite::Statement& statement);
@@ -42,6 +48,7 @@ private:
     SQLite::Database mDbHandler;
 
     bool isAdminsVectorUpdated;
+    bool isMaterialAlarmUsersVectorUpdated;
     bool isTattooArtistsVectorUpdated;
     bool isUsersVectorUpdated;
     bool isMaterialsVectorUpdated;
