@@ -42,6 +42,7 @@ private:
     void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
     UsersTable::UserRow scrapUserDataFromMessage(const TgBot::Message::Ptr& message);
     std::optional<std::string> getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu);
+    std::string formUserInfoStrFromMessage(const TgBot::User::Ptr& user);
 
 private:
     const std::string_view mToken;

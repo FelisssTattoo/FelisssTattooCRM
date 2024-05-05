@@ -147,7 +147,7 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
     try {
         insertUserInTableIfNotExists(message);
 
-        spdlog::info("\"{}\" wrote \"{}\"", message->chat->username, message->text);
+        spdlog::info("{} wrote \"{}\"", formUserInfoStrFromMessage(message->from), message->text);
 
         if (StringTools::startsWith(message->text, "/")) {
             return;
@@ -266,8 +266,8 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
 
 void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query) {
     try {
-        spdlog::info("\"{}\" applied callback with data \"{}\"", query->message->chat->username,
-                     query->data);
+        spdlog::info("{} applied callback with data \"{}\"",
+                     formUserInfoStrFromMessage(query->from), query->data);
         if (!checkIfTelegramIdIsAdmin(query->from->id)) {
             sendMessage(query->message,
                         "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
@@ -454,4 +454,16 @@ BotManager::getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu) {
         return {};
     }
     return ret_message;
+}
+
+std::string BotManager::formUserInfoStrFromMessage(const TgBot::User::Ptr& user) {
+    std::string ret_str(user->firstName);
+    if (user->lastName.length()) {
+        ret_str.append(fmt::format(" {}", user->lastName));
+    }
+    if (user->username.length()) {
+        ret_str.append(fmt::format("(@{})", user->username));
+    }
+
+    return ret_str;
 }
