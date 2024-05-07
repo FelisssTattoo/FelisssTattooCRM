@@ -478,3 +478,18 @@ DatabaseManager::getMaterialCriticalAmountRowFromStatement(SQLite::Statement& st
 
     return material_critical_amount_row;
 }
+
+std::vector<MaterialsTable::MaterialRow> DatabaseManager::getCriticalMaterials() {
+    const auto materials = getMaterials();
+    std::vector<MaterialsTable::MaterialRow> critical_materials;
+    for (const auto& material : materials) {
+        const auto critical_amount = getMaterialCriticalAmountByMaterialId(material.id.value());
+        if (critical_amount) {
+            if (material.count <= critical_amount.value().critical_amount) {
+                critical_materials.push_back(material);
+            }
+        }
+    }
+
+    return critical_materials;
+}

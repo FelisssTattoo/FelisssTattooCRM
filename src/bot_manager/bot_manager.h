@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client_chat_status.h"
+#include "timer.h"
 
 #include <database_manager/database_manager.h>
 
@@ -18,6 +19,7 @@ private:
     void init();
     void initMenus();
 
+    void sendMessage(std::int64_t telegram_id, const std::string& message);
     void sendMessage(const TgBot::Message::Ptr& recv_message, const std::string& message);
     void sendMenuWithMessage(const TgBot::Message::Ptr& recv_message,
                              const TgBot::GenericReply::Ptr& menu, const std::string& message);
@@ -45,6 +47,9 @@ private:
     std::string formUserInfoStr(const UsersTable::UserRow& user_row);
     std::string formMaterialInfoStr(const MaterialsTable::MaterialRow& material_row);
 
+    void sendMaterialAlarms();
+    void scheduleCriticalAmountMessageIfNessessory();
+
     std::shared_ptr<ClientChatStatus> getClientChatStatus(const TgBot::Message::Ptr& message);
     void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
     UsersTable::UserRow scrapUserDataFromMessage(const TgBot::Message::Ptr& message);
@@ -65,6 +70,9 @@ private:
 
     std::map<int64_t, std::shared_ptr<ClientChatStatus>> mClientChatStatuses;
 
+    Timer mAlarmMessageTimer;
+    int mAlarmMessageDelayMinutes = 1;
+
     static TgBot::InlineKeyboardButton::Ptr mBackButton;
 
     static TgBot::InlineKeyboardMarkup::Ptr mMainMenu;
@@ -76,7 +84,7 @@ private:
     static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenuToUpdateDelete;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenu;
 
-    static constexpr std::string_view PARSE_MODE                        = "HTML";
+    static constexpr std::string_view PARSE_MODE                        = "Markdown";
     static constexpr std::string_view CHOOSE_MATERIAL_PREFIX            = "material_id_";
     static constexpr std::string_view CHOOSE_MATERIAL_ALARM_USER_PREFIX = "material_alarm_user_id_";
 };

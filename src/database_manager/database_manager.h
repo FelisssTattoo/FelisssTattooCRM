@@ -44,6 +44,7 @@ public:
     std::vector<MaterialsTable::MaterialRow> getMaterials();
     std::optional<MaterialsTable::MaterialRow> getMaterialByName(const std::string& name);
     std::optional<MaterialsTable::MaterialRow> getMaterialById(size_t id);
+    std::vector<MaterialsTable::MaterialRow> getCriticalMaterials();
 
 private:
     void initUsersTable();

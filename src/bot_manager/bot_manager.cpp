@@ -49,6 +49,10 @@ void BotManager::init() {
 
     mBotHandler.getEvents().onCallbackQuery(
         std::bind(&BotManager::callbackOnCallbackQuery, this, std::placeholders::_1));
+
+    mAlarmMessageTimer.setCallback(std::bind(&BotManager::sendMaterialAlarms, this));
+    mAlarmMessageTimer.setSingleShot(true);
+    mAlarmMessageTimer.setInterval(mAlarmMessageDelayMinutes * 60 * 1000);
 }
 
 void BotManager::initMenus() {
@@ -113,13 +117,17 @@ void BotManager::initMenus() {
     mMaterialsMenu->inlineKeyboard.push_back({mBackButton});
 }
 
-void BotManager::sendMessage(const TgBot::Message::Ptr& recv_message, const std::string& message) {
+void BotManager::sendMessage(std::int64_t telegram_id, const std::string& message) {
     try {
-        mBotHandler.getApi().sendMessage(recv_message->chat->id, message, false, 0, nullptr,
+        mBotHandler.getApi().sendMessage(telegram_id, message, false, 0, nullptr,
                                          PARSE_MODE.data());
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
     }
+}
+
+void BotManager::sendMessage(const TgBot::Message::Ptr& recv_message, const std::string& message) {
+    sendMessage(recv_message->chat->id, message);
 }
 
 void BotManager::sendMenuWithMessage(const TgBot::Message::Ptr& recv_message,
@@ -301,6 +309,7 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                     "{} оновлено в базі даних",
                     formMaterialInfoStr(client_status->updating_material));
                 sendMessage(message, send_str);
+                scheduleCriticalAmountMessageIfNessessory();
             } else {
                 sendMessage(message, ERROR_MESSAGE.data());
             }
@@ -663,6 +672,37 @@ std::string BotManager::formUserInfoStr(const UsersTable::UserRow& user) {
 std::string BotManager::formMaterialInfoStr(const MaterialsTable::MaterialRow& material_row) {
     return fmt::format("{} {}{}", material_row.name, material_row.count,
                        material_row.suffix.value_or(""));
+}
+
+void BotManager::sendMaterialAlarms() {
+    const auto users              = mDatabaseManager.getMaterialAlarmUsers();
+    const auto critical_materials = mDatabaseManager.getCriticalMaterials();
+
+    if (critical_materials.size()) {
+        std::string message("Критична кількість наступних матеріалів:\n");
+        for (const auto& critical_material : critical_materials) {
+            const auto material_critical_amount
+                = mDatabaseManager.getMaterialCriticalAmountByMaterialId(
+                    critical_material.id.value());
+            message.append(fmt::format(
+                " - {} має критичну кількість {} < {}\n", formMaterialInfoStr(critical_material),
+                critical_material.count, material_critical_amount.value().critical_amount));
+        }
+        for (const auto& user : users) {
+            sendMessage(user.telegram_id.value(), message);
+            spdlog::info("Scheduled alarm message sent to {}", formUserInfoStr(user));
+        }
+    }
+}
+
+void BotManager::scheduleCriticalAmountMessageIfNessessory() {
+    const auto critical_materials = mDatabaseManager.getCriticalMaterials();
+    if (critical_materials.size()) {
+        spdlog::info("Scheduled alarm message for {} minute", mAlarmMessageDelayMinutes);
+        mAlarmMessageTimer.startOrReset();
+    } else {
+        mAlarmMessageTimer.stop();
+    }
 }
 
 std::shared_ptr<ClientChatStatus>
