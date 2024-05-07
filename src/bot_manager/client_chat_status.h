@@ -4,7 +4,8 @@
 
 #include <tgbot/tgbot.h>
 
-struct ClientChatStatus {
+class ClientChatStatus {
+public:
     TgBot::InlineKeyboardMarkup::Ptr current_menu;
 
     MaterialsTable::MaterialRow updating_material{};
@@ -14,4 +15,11 @@ struct ClientChatStatus {
     bool do_user_update_material_count     = false;
     bool do_user_choose_to_modify_material = false;
     bool do_user_choose_to_delete_material = false;
+
+    bool do_user_choose_material_critical_amount_to_add    = false;
+    bool do_user_choose_material_critical_amount_to_update = false;
+    bool do_user_type_material_critical_amount_to_update   = false;
+    bool do_user_choose_material_critical_amount_to_delete = false;
+
+    void clearAllProperties();
 };

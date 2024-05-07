@@ -11,12 +11,14 @@ DatabaseManager::DatabaseManager(std::string_view db_pathname) :
     isTattooArtistsVectorUpdated(false),
     isUsersVectorUpdated(false),
     isMaterialsVectorUpdated(false),
-    isMaterialAlarmUsersVectorUpdated(false) {
+    isMaterialAlarmUsersVectorUpdated(false),
+    isMaterialCriticalAmountVectorUpdated(false) {
     initUsersTable();
     initMaterialsTable();
     initAdminsTable();
     initTattooArtistsTable();
     initMaterialAlarmUsersTable();
+    initMaterialCriticalAmountTable();
 }
 
 bool DatabaseManager::addUser(const UsersTable::UserRow& user_row) {
@@ -183,6 +185,95 @@ std::vector<UsersTable::UserRow> DatabaseManager::getMaterialAlarmUsers() {
     return material_alarm_users_vector;
 }
 
+bool DatabaseManager::addMaterialCriticalAmount(const MaterialsTable::MaterialRow& material_row,
+                                                std::int64_t critical_amount) {
+    MaterialCriticalAmountTable::MaterialCriticalAmountRow row = {
+        .material_id = material_row.id.value(), .critical_amount = critical_amount};
+    try {
+        const bool is_okay = mDbHandler.exec(MaterialCriticalAmountTable::formInsertRowQuery(row));
+        if (is_okay) {
+            isMaterialCriticalAmountVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+bool DatabaseManager::updateMaterialCriticalAmountById(
+    std::int64_t id, const MaterialCriticalAmountTable::MaterialCriticalAmountRow& material_row) {
+    try {
+        const bool is_okay = mDbHandler.exec(
+            MaterialCriticalAmountTable::formUpdateRowQuery(id, material_row));
+        if (is_okay) {
+            isMaterialCriticalAmountVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+bool DatabaseManager::deleteMaterialCriticalAmount(std::int64_t id) {
+    try {
+        const bool is_okay = mDbHandler.exec(MaterialCriticalAmountTable::formDeleteRowQuery(id));
+        if (is_okay) {
+            isMaterialCriticalAmountVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+bool DatabaseManager::deleteMaterialCriticalAmountByMaterialId(std::int64_t material_id) {
+    const auto critical_amount_materials = getMaterialCriticalAmount();
+    const auto found_material            = std::find_if(critical_amount_materials.begin(),
+                                                        critical_amount_materials.end(),
+                                                        [material_id](const auto& material_row) {
+                                                 return (material_row.material_id == material_id);
+                                             });
+    if (found_material != critical_amount_materials.end()) {
+        return deleteMaterialCriticalAmount(found_material->id.value());
+    }
+    return false;
+}
+
+std::vector<MaterialCriticalAmountTable::MaterialCriticalAmountRow>
+DatabaseManager::getMaterialCriticalAmount() {
+    static std::vector<MaterialCriticalAmountTable::MaterialCriticalAmountRow> materials_vector;
+
+    if (!isMaterialCriticalAmountVectorUpdated) {
+        materials_vector.clear();
+
+        SQLite::Statement query(mDbHandler, MaterialCriticalAmountTable::formSelectRowQuery());
+        while (query.executeStep()) {
+            materials_vector.push_back(getMaterialCriticalAmountRowFromStatement(query));
+        }
+
+        isMaterialCriticalAmountVectorUpdated = true;
+    }
+
+    return materials_vector;
+}
+
+std::optional<MaterialCriticalAmountTable::MaterialCriticalAmountRow>
+DatabaseManager::getMaterialCriticalAmountByMaterialId(std::int64_t material_id) {
+    const auto critical_materials      = getMaterialCriticalAmount();
+    const auto found_critical_material = std::find_if(
+        critical_materials.begin(), critical_materials.end(),
+        [material_id](const auto& material_row) {
+            return (material_id == material_row.material_id);
+        });
+    if (found_critical_material != critical_materials.end()) {
+        return *found_critical_material;
+    }
+    return {};
+}
+
 bool DatabaseManager::addMaterial(const MaterialsTable::MaterialRow& material_row) {
     try {
         const bool is_okay = mDbHandler.exec(MaterialsTable::formInsertRowQuery(material_row));
@@ -198,7 +289,6 @@ bool DatabaseManager::addMaterial(const MaterialsTable::MaterialRow& material_ro
 
 bool DatabaseManager::updateMaterialCountById(std::int64_t id,
                                               const MaterialsTable::MaterialRow& material_row) {
-
     try {
         const bool is_okay = mDbHandler.exec(MaterialsTable::formUpdateRowQuery(id, material_row));
         if (is_okay) {
@@ -310,6 +400,14 @@ void DatabaseManager::initMaterialAlarmUsersTable() {
     }
 }
 
+void DatabaseManager::initMaterialCriticalAmountTable() {
+    try {
+        mDbHandler.exec(MaterialCriticalAmountTable::formCreateTableQuery());
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+    }
+}
+
 UsersTable::UserRow DatabaseManager::getUserRowFromStatement(SQLite::Statement& statement) {
     UsersTable::UserRow user_row{};
 
@@ -362,4 +460,21 @@ DatabaseManager::getMaterialRowFromStatement(SQLite::Statement& statement) {
     }
 
     return material_row;
+}
+
+MaterialCriticalAmountTable::MaterialCriticalAmountRow
+DatabaseManager::getMaterialCriticalAmountRowFromStatement(SQLite::Statement& statement) {
+    MaterialCriticalAmountTable::MaterialCriticalAmountRow material_critical_amount_row{};
+
+    if (!statement.getColumn(0).isNull()) {
+        material_critical_amount_row.id = statement.getColumn(0).getInt64();
+    }
+    if (!statement.getColumn(1).isNull()) {
+        material_critical_amount_row.material_id = statement.getColumn(1).getInt64();
+    }
+    if (!statement.getColumn(2).isNull()) {
+        material_critical_amount_row.critical_amount = statement.getColumn(2).getInt64();
+    }
+
+    return material_critical_amount_row;
 }

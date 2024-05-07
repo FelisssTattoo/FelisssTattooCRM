@@ -2,6 +2,7 @@
 
 #include "admins_table.h"
 #include "material_alarm_users.h"
+#include "material_critical_amount.h"
 #include "materials_table.h"
 #include "tattoo_artists_table.h"
 #include "users_table.h"
@@ -26,6 +27,17 @@ public:
     bool deleteMaterialAlarmUserById(std::int64_t id);
     std::vector<UsersTable::UserRow> getMaterialAlarmUsers();
 
+    bool addMaterialCriticalAmount(const MaterialsTable::MaterialRow& material_row,
+                                   std::int64_t critical_amount);
+    bool updateMaterialCriticalAmountById(
+        std::int64_t id,
+        const MaterialCriticalAmountTable::MaterialCriticalAmountRow& material_row);
+    bool deleteMaterialCriticalAmount(std::int64_t id);
+    bool deleteMaterialCriticalAmountByMaterialId(std::int64_t material_id);
+    std::vector<MaterialCriticalAmountTable::MaterialCriticalAmountRow> getMaterialCriticalAmount();
+    std::optional<MaterialCriticalAmountTable::MaterialCriticalAmountRow>
+    getMaterialCriticalAmountByMaterialId(std::int64_t material_id);
+
     bool addMaterial(const MaterialsTable::MaterialRow& material_row);
     bool updateMaterialCountById(std::int64_t id, const MaterialsTable::MaterialRow& material_row);
     bool deleteMaterialById(std::int64_t id);
@@ -39,9 +51,12 @@ private:
     void initAdminsTable();
     void initTattooArtistsTable();
     void initMaterialAlarmUsersTable();
+    void initMaterialCriticalAmountTable();
 
     UsersTable::UserRow getUserRowFromStatement(SQLite::Statement& statement);
     MaterialsTable::MaterialRow getMaterialRowFromStatement(SQLite::Statement& statement);
+    MaterialCriticalAmountTable::MaterialCriticalAmountRow
+    getMaterialCriticalAmountRowFromStatement(SQLite::Statement& statement);
 
 private:
     std::string_view mDbPathname;
@@ -52,4 +67,5 @@ private:
     bool isTattooArtistsVectorUpdated;
     bool isUsersVectorUpdated;
     bool isMaterialsVectorUpdated;
+    bool isMaterialCriticalAmountVectorUpdated;
 };

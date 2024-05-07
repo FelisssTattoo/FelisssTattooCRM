@@ -37,14 +37,20 @@ private:
     bool checkIfTelegramIdIsTattooArtist(std::int64_t telegram_id);
 
     void updateChooseMaterialMenu();
+    void updateChooseMaterialCriticalAmountToAdd();
+    void updateChooseMaterialCriticalAmountToUpdateDelete();
     void updateChooseMaterialAlarmUserMenu();
+
+    std::string formUserInfoStr(const TgBot::User::Ptr& user);
+    std::string formUserInfoStr(const UsersTable::UserRow& user_row);
+    std::string formMaterialInfoStr(const MaterialsTable::MaterialRow& material_row);
 
     std::shared_ptr<ClientChatStatus> getClientChatStatus(const TgBot::Message::Ptr& message);
     void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
     UsersTable::UserRow scrapUserDataFromMessage(const TgBot::Message::Ptr& message);
     std::optional<std::string> getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu);
-    std::string formUserInfoStr(const TgBot::User::Ptr& user);
-    std::string formUserInfoStr(const UsersTable::UserRow& user_row);
+    TgBot::InlineKeyboardMarkup::Ptr
+    returnPreviousMenu(const TgBot::InlineKeyboardMarkup::Ptr& current_menu);
 
 private:
     const std::string_view mToken;
@@ -54,13 +60,21 @@ private:
 
     DatabaseManager mDatabaseManager;
     static constexpr std::string_view DATABASE_PATHNAME = "felisss.db";
+    static constexpr std::string_view ERROR_MESSAGE
+        = "На жаль сталась помилка. Спробуйте ще раз або зверніться до адміністратора";
 
     std::map<int64_t, std::shared_ptr<ClientChatStatus>> mClientChatStatuses;
+
+    static TgBot::InlineKeyboardButton::Ptr mBackButton;
 
     static TgBot::InlineKeyboardMarkup::Ptr mMainMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mMaterialsMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialAlarmUserMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mConfigureMaterialCriticalAmountMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenuToAdd;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenuToUpdateDelete;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenu;
 
     static constexpr std::string_view PARSE_MODE                        = "HTML";
     static constexpr std::string_view CHOOSE_MATERIAL_PREFIX            = "material_id_";
