@@ -24,7 +24,7 @@ public:
     std::vector<UsersTable::UserRow> getTattooArtists();
 
     bool addMaterialAlarmUser(const UsersTable::UserRow& user_row);
-    bool deleteMaterialAlarmUserById(std::int64_t id);
+    bool deleteMaterialAlarmUserByUserId(std::int64_t user_id);
     std::vector<UsersTable::UserRow> getMaterialAlarmUsers();
 
     bool addMaterialCriticalAmount(const MaterialsTable::MaterialRow& material_row,

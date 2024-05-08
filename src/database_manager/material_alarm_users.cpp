@@ -21,7 +21,7 @@ std::string MaterialAlarmUsersTable::formInsertRowQuery(const MaterialAlarmUserR
 }
 
 std::string MaterialAlarmUsersTable::formDeleteRowQuery(std::int64_t id) {
-    const auto return_str = fmt::format("DELETE FROM {} WHERE id = {};", TABLE_NAME, id);
+    const auto return_str = fmt::format("DELETE FROM {} WHERE user_id = {};", TABLE_NAME, id);
 
     return return_str;
 }

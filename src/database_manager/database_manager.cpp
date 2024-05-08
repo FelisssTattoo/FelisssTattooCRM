@@ -150,9 +150,9 @@ bool DatabaseManager::addMaterialAlarmUser(const UsersTable::UserRow& user_row) 
     }
 }
 
-bool DatabaseManager::deleteMaterialAlarmUserById(std::int64_t id) {
+bool DatabaseManager::deleteMaterialAlarmUserByUserId(std::int64_t user_id) {
     try {
-        const bool is_okay = mDbHandler.exec(MaterialAlarmUsersTable::formDeleteRowQuery(id));
+        const bool is_okay = mDbHandler.exec(MaterialAlarmUsersTable::formDeleteRowQuery(user_id));
         if (is_okay) {
             isMaterialAlarmUsersVectorUpdated = false;
         }

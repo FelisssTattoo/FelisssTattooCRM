@@ -491,7 +491,7 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                                                  });
             bool is_operation_okay          = false;
             if (isAlarmOn) {
-                if (mDatabaseManager.deleteMaterialAlarmUserById(switch_alarm_user_id)) {
+                if (mDatabaseManager.deleteMaterialAlarmUserByUserId(switch_alarm_user_id)) {
                     sendMessage(query->message, fmt::format("{} прибрано із системи сповіщень",
                                                             formUserInfoStr(*found_user)));
                     is_operation_okay = true;
@@ -504,8 +504,10 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                 }
             }
             if (!is_operation_okay) {
-                sendMessage(query->message, "На жаль сталася помилка. Спробуйте ще раз або "
-                                            "зверніться до адміністартора");
+
+                SPDLOG_ERROR("Не вдалося {} сповіщення для {}",
+                             (isAlarmOn) ? ("прибрати") : ("додати"), formUserInfoStr(*found_user));
+                sendMessage(query->message, ERROR_MESSAGE.data());
             }
             updateChooseMaterialAlarmUserMenu();
             sendCurrentMenu(query->message);

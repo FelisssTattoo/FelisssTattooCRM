@@ -84,7 +84,7 @@ private:
     static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenuToUpdateDelete;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenu;
 
-    static constexpr std::string_view PARSE_MODE                        = "Markdown";
+    static constexpr std::string_view PARSE_MODE                        = "";
     static constexpr std::string_view CHOOSE_MATERIAL_PREFIX            = "material_id_";
     static constexpr std::string_view CHOOSE_MATERIAL_ALARM_USER_PREFIX = "material_alarm_user_id_";
 };
