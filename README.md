@@ -29,6 +29,13 @@ cd build
 make
 ```
 
+## build with shared libraries(not static)
+```bash
+cmake -B build -DBUILD_SHARED_LIBS=ON
+cd build
+make
+```
+
 # Scripts/Tools
 
 ## clang-format
