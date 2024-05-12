@@ -47,6 +47,7 @@ private:
     std::string formUserInfoStr(const TgBot::User::Ptr& user);
     std::string formUserInfoStr(const UsersTable::UserRow& user_row);
     std::string formMaterialInfoStr(const MaterialsTable::MaterialRow& material_row);
+    std::string formSessionInfoStr(const SessionsTable::SessionRow& row);
 
     void sendMaterialAlarms();
     void scheduleCriticalAmountMessageIfNessessory();
@@ -57,6 +58,7 @@ private:
     std::optional<std::string> getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu);
     TgBot::InlineKeyboardMarkup::Ptr
     returnPreviousMenu(const TgBot::InlineKeyboardMarkup::Ptr& current_menu);
+    bool validateMessageAndSendErrorWithMenu(const TgBot::Message::Ptr& message);
 
 private:
     const std::string_view mToken;
@@ -77,6 +79,7 @@ private:
     static TgBot::InlineKeyboardButton::Ptr mBackButton;
 
     static TgBot::InlineKeyboardMarkup::Ptr mMainMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mSessionsMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mMaterialsMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialAlarmUserMenu;

@@ -15,3 +15,5 @@ struct ColumnType {
     SqlType sql_type;
     std::vector<std::string_view> constraints;
 };
+
+struct DateTime {};

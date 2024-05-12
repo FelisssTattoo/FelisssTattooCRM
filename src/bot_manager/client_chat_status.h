@@ -21,5 +21,8 @@ public:
     bool do_user_type_material_critical_amount_to_update   = false;
     bool do_user_choose_material_critical_amount_to_delete = false;
 
+    bool do_user_type_date = false;
+    SessionsTable::SessionRow session_row{};
+
     void clearAllProperties();
 };

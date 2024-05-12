@@ -1,5 +1,7 @@
 #include "database_manager.h"
 
+#include "database_manager_tools.h"
+
 #include <felisss_logger/felisss_logger.h>
 
 #include <fmt/core.h>
@@ -12,13 +14,15 @@ DatabaseManager::DatabaseManager(std::string_view db_pathname) :
     isUsersVectorUpdated(false),
     isMaterialsVectorUpdated(false),
     isMaterialAlarmUsersVectorUpdated(false),
-    isMaterialCriticalAmountVectorUpdated(false) {
+    isMaterialCriticalAmountVectorUpdated(false),
+    isSessionsVectorUpdated(false) {
     initUsersTable();
     initMaterialsTable();
     initAdminsTable();
     initTattooArtistsTable();
     initMaterialAlarmUsersTable();
     initMaterialCriticalAmountTable();
+    initSessionsTable();
 }
 
 bool DatabaseManager::addUser(const UsersTable::UserRow& user_row) {
@@ -49,6 +53,20 @@ std::vector<UsersTable::UserRow> DatabaseManager::getUsers() {
     }
 
     return users_vector;
+}
+
+std::optional<UsersTable::UserRow> DatabaseManager::getUserById(std::int64_t id) {
+    const auto users = getUsers();
+
+    const auto user = std::find_if(users.begin(), users.end(), [id](const auto& user_row) {
+        return (user_row.id == id);
+    });
+
+    if (user != users.end()) {
+        return *user;
+    }
+
+    return {};
 }
 
 std::optional<UsersTable::UserRow> DatabaseManager::getUserByTelegramId(std::int64_t telegram_id) {
@@ -408,6 +426,14 @@ void DatabaseManager::initMaterialCriticalAmountTable() {
     }
 }
 
+void DatabaseManager::initSessionsTable() {
+    try {
+        mDbHandler.exec(SessionsTable::formCreateTableQuery());
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+    }
+}
+
 UsersTable::UserRow DatabaseManager::getUserRowFromStatement(SQLite::Statement& statement) {
     UsersTable::UserRow user_row{};
 
@@ -479,6 +505,25 @@ DatabaseManager::getMaterialCriticalAmountRowFromStatement(SQLite::Statement& st
     return material_critical_amount_row;
 }
 
+SessionsTable::SessionRow
+DatabaseManager::getSessionRowFromStatement(SQLite::Statement& statement) {
+    SessionsTable::SessionRow session_row{};
+    if (!statement.getColumn(0).isNull()) {
+        session_row.id = statement.getColumn(0).getInt64();
+    }
+    if (!statement.getColumn(1).isNull()) {
+        session_row.date_time = statement.getColumn(1).getString();
+    }
+    if (!statement.getColumn(2).isNull()) {
+        session_row.tattoo_artist_id = statement.getColumn(2).getInt64();
+    }
+    if (!statement.getColumn(3).isNull()) {
+        session_row.user_id = statement.getColumn(3).getInt64();
+    }
+
+    return session_row;
+}
+
 std::vector<MaterialsTable::MaterialRow> DatabaseManager::getCriticalMaterials() {
     const auto materials = getMaterials();
     std::vector<MaterialsTable::MaterialRow> critical_materials;
@@ -492,4 +537,46 @@ std::vector<MaterialsTable::MaterialRow> DatabaseManager::getCriticalMaterials()
     }
 
     return critical_materials;
+}
+
+bool DatabaseManager::addSession(const SessionsTable::SessionRow& row) {
+    try {
+        const bool is_okay = mDbHandler.exec(SessionsTable::formInsertRowQuery(row));
+        if (is_okay) {
+            isSessionsVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+std::vector<SessionsTable::SessionRow> DatabaseManager::getSessions() {
+    static std::vector<SessionsTable::SessionRow> sessions_vector;
+
+    if (!isSessionsVectorUpdated) {
+        sessions_vector.clear();
+
+        SQLite::Statement query(mDbHandler, SessionsTable::formSelectRowQuery());
+        while (query.executeStep()) {
+            sessions_vector.push_back(getSessionRowFromStatement(query));
+        }
+
+        isSessionsVectorUpdated = true;
+    }
+
+    return sessions_vector;
+}
+
+std::vector<SessionsTable::SessionRow> DatabaseManager::getSessionsInFuture() {
+    std::vector<SessionsTable::SessionRow> ret_vec;
+    const auto sessions = getSessions();
+    const auto now      = std::chrono::system_clock::now();
+    std::for_each(sessions.begin(), sessions.end(), [&ret_vec, now](const auto& session) {
+        if (DatabaseManagerTools::convertStrToTimePoint(session.date_time) > now) {
+            ret_vec.push_back(session);
+        }
+    });
+    return ret_vec;
 }

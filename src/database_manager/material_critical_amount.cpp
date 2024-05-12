@@ -4,12 +4,6 @@
 
 #include <fmt/core.h>
 
-struct MaterialCriticalAmountRow {
-    std::optional<std::int64_t> id;
-    std::int64_t material_id;
-    std::int64_t critical_amount;
-};
-
 std::vector<ColumnType> MaterialCriticalAmountTable::COLUMNS = {
     {"id",              SqlType::INTEGER, {"PRIMARY KEY", "UNIQUE"}                                },
     {"material_id",     SqlType::INTEGER, {"NOT NULL", "REFERENCES \"materials\"(\"material_id\")"}},

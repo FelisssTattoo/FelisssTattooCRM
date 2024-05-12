@@ -11,4 +11,6 @@ void ClientChatStatus::clearAllProperties() {
     do_user_choose_material_critical_amount_to_add    = false;
     do_user_choose_material_critical_amount_to_update = false;
     do_user_choose_material_critical_amount_to_delete = false;
+
+    do_user_type_date = false;
 }

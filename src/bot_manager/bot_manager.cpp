@@ -8,6 +8,7 @@
 TgBot::InlineKeyboardButton::Ptr BotManager::mBackButton(new TgBot::InlineKeyboardButton);
 
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMainMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr BotManager::mSessionsMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMaterialsMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseMaterialMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr
@@ -62,7 +63,11 @@ void BotManager::initMenus() {
     TgBot::InlineKeyboardButton::Ptr materials_button(new TgBot::InlineKeyboardButton);
     materials_button->text         = "Матеріали";
     materials_button->callbackData = "materials";
+    TgBot::InlineKeyboardButton::Ptr sessions_button(new TgBot::InlineKeyboardButton);
+    sessions_button->text         = "Сеанси";
+    sessions_button->callbackData = "sessions";
     mMainMenu->inlineKeyboard.push_back({materials_button});
+    mMainMenu->inlineKeyboard.push_back({sessions_button});
 
     TgBot::InlineKeyboardButton::Ptr materials_menu_add_material(new TgBot::InlineKeyboardButton);
     TgBot::InlineKeyboardButton::Ptr materials_menu_delete_material(
@@ -115,6 +120,20 @@ void BotManager::initMenus() {
     mMaterialsMenu->inlineKeyboard.push_back({materials_menu_modify_alarm_users});
     mMaterialsMenu->inlineKeyboard.push_back({materials_menu_material_critical_amount});
     mMaterialsMenu->inlineKeyboard.push_back({mBackButton});
+
+    TgBot::InlineKeyboardButton::Ptr add_session_bt(new TgBot::InlineKeyboardButton);
+    TgBot::InlineKeyboardButton::Ptr update_session_bt(new TgBot::InlineKeyboardButton);
+    TgBot::InlineKeyboardButton::Ptr delete_session_bt(new TgBot::InlineKeyboardButton);
+    add_session_bt->text            = "Додати сеанс";
+    add_session_bt->callbackData    = "add_session";
+    update_session_bt->text         = "Оновити сеанс";
+    update_session_bt->callbackData = "update_session";
+    delete_session_bt->text         = "Скасувати сеанс";
+    delete_session_bt->callbackData = "delete_session";
+
+    mSessionsMenu->inlineKeyboard.push_back({add_session_bt, update_session_bt});
+    mSessionsMenu->inlineKeyboard.push_back({delete_session_bt});
+    mSessionsMenu->inlineKeyboard.push_back({mBackButton});
 }
 
 void BotManager::sendMessage(std::int64_t telegram_id, const std::string& message) {
@@ -223,13 +242,11 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             return;
         }
 
-        if (!DatabaseManagerTools::validateUserInput(message->text)) {
-            sendMessage(message, ERROR_MESSAGE.data());
-            sendCurrentMenu(message);
+        const auto client_status = getClientChatStatus(message);
+        if (!validateMessageAndSendErrorWithMenu(message)) {
+            client_status->clearAllProperties();
             return;
         }
-
-        const auto client_status = getClientChatStatus(message);
 
         if (client_status->do_user_type_material_name) {
             client_status->do_user_type_material_name = false;
@@ -366,6 +383,21 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 sendCurrentMenu(message);
                 return;
             }
+        } else if (client_status->do_user_type_date) {
+            client_status->do_user_type_date = false;
+            if (!DatabaseManagerTools::isValidDateTimeFormat(message->text)) {
+                sendMessage(message, "Неправильний формат дати");
+                sendCurrentMenu(message);
+                return;
+            }
+            auto tp = DatabaseManagerTools::convertStrToTimePoint(message->text);
+            if (!tp.has_value()) {
+                sendMessage(message, "Неправильн зазначена дата");
+                sendCurrentMenu(message);
+                return;
+            }
+            client_status->session_row.date_time
+                = DatabaseManagerTools::convertTimePointToStr(*tp).value();
         } else {
             sendMessage(message, "Невідомий статус чату");
             sendCurrentMenu(message);
@@ -531,6 +563,17 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                 client_status->do_user_choose_material_critical_amount_to_delete = true;
             }
             editCurrentMenu(query->message);
+        } else if (query->data == "sessions") {
+            client_status->current_menu = mSessionsMenu;
+            editCurrentMenu(query->message);
+        } else if (query->data == "add_session") {
+            sendMessage(
+                query->message,
+                "Відправ дату сеансу у форматі dd/mm/year, а також додай hh:mm якщо відомий час:");
+            client_status->do_user_type_date = true;
+        } else if (query->data == "update_session") {
+
+        } else if (query->data == "delete_session") {
         }
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
@@ -676,6 +719,19 @@ std::string BotManager::formMaterialInfoStr(const MaterialsTable::MaterialRow& m
                        material_row.suffix.value_or(""));
 }
 
+std::string BotManager::formSessionInfoStr(const SessionsTable::SessionRow& row) {
+    const auto tattoo_artist = mDatabaseManager.getUserById(row.tattoo_artist_id);
+    std::string ret_str(
+        fmt::format("сеанс у {} на {}", formUserInfoStr(tattoo_artist.value()), row.date_time));
+    if (row.user_id.has_value()) {
+        const auto customer = mDatabaseManager.getUserById(row.user_id.value());
+        if (customer.has_value()) {
+            ret_str.append(fmt::format(" для {}", formUserInfoStr(customer.value())));
+        }
+    }
+    return ret_str;
+}
+
 void BotManager::sendMaterialAlarms() {
     const auto users              = mDatabaseManager.getMaterialAlarmUsers();
     const auto critical_materials = mDatabaseManager.getCriticalMaterials();
@@ -756,6 +812,12 @@ BotManager::getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu) {
             ret_message.append(fmt::format(" - {}\n", formMaterialInfoStr(item)));
         }
         ret_message.append(choose_option_str);
+    } else if (menu == mSessionsMenu) {
+        ret_message.assign("Сеанси:\n");
+        for (const auto& session : mDatabaseManager.getSessionsInFuture()) {
+            ret_message.append(fmt::format(" - {}\n", formSessionInfoStr(session)));
+        }
+        ret_message.append(choose_option_str);
     } else if (menu == mChooseMaterialMenu) {
         ret_message = choose_option_str;
     } else if (menu == mChooseMaterialAlarmUserMenu) {
@@ -792,6 +854,8 @@ BotManager::returnPreviousMenu(const TgBot::InlineKeyboardMarkup::Ptr& current_m
         return mMainMenu;
     } else if (current_menu == mMaterialsMenu) {
         return mMainMenu;
+    } else if (current_menu == mSessionsMenu) {
+        return mMainMenu;
     } else if (current_menu == mChooseMaterialMenu) {
         return mMaterialsMenu;
     } else if (current_menu == mChooseMaterialAlarmUserMenu) {
@@ -808,4 +872,53 @@ BotManager::returnPreviousMenu(const TgBot::InlineKeyboardMarkup::Ptr& current_m
         SPDLOG_ERROR("Not valid current menu");
         return mMainMenu;
     }
+}
+
+bool BotManager::validateMessageAndSendErrorWithMenu(const TgBot::Message::Ptr& message) {
+    bool is_okay = true;
+    if (!DatabaseManagerTools::validateUserInput(message->text)) {
+        sendMessage(message, "Помічені заборонені знаки: \"^['\";%]*$\"");
+        is_okay = false;
+    }
+
+    if (is_okay && message->animation) {
+        sendMessage(message, "Повідомлення не може бути анімацією");
+        is_okay = false;
+    }
+
+    if (is_okay && message->audio) {
+        sendMessage(message, "Повідомлення не може бути аудіо");
+        is_okay = false;
+    }
+
+    if (is_okay && message->contact) {
+        sendMessage(message, "Повідомлення не може бути контактом");
+        is_okay = false;
+    }
+
+    if (is_okay && message->document) {
+        sendMessage(message, "Повідомлення не може бути документом");
+        is_okay = false;
+    }
+
+    if (is_okay && message->game) {
+        sendMessage(message, "Повідомлення не може бути грою");
+        is_okay = false;
+    }
+
+    if (is_okay && message->location) {
+        sendMessage(message, "Повідомлення не може бути локацією");
+        is_okay = false;
+    }
+
+    if (is_okay && !message->text.length()) {
+        sendMessage(message, "Повідомлення не може бути пустим");
+        is_okay = false;
+    }
+
+    if (!is_okay) {
+        sendCurrentMenu(message);
+    }
+
+    return is_okay;
 }

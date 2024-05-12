@@ -4,6 +4,7 @@
 #include "material_alarm_users.h"
 #include "material_critical_amount.h"
 #include "materials_table.h"
+#include "sessions_table.h"
 #include "tattoo_artists_table.h"
 #include "users_table.h"
 
@@ -15,6 +16,7 @@ public:
 
     bool addUser(const UsersTable::UserRow& user_row);
     std::vector<UsersTable::UserRow> getUsers();
+    std::optional<UsersTable::UserRow> getUserById(std::int64_t id);
     std::optional<UsersTable::UserRow> getUserByTelegramId(std::int64_t telegram_id);
 
     bool addAdmin(const UsersTable::UserRow& user_row);
@@ -46,6 +48,10 @@ public:
     std::optional<MaterialsTable::MaterialRow> getMaterialById(size_t id);
     std::vector<MaterialsTable::MaterialRow> getCriticalMaterials();
 
+    bool addSession(const SessionsTable::SessionRow& row);
+    std::vector<SessionsTable::SessionRow> getSessions();
+    std::vector<SessionsTable::SessionRow> getSessionsInFuture();
+
 private:
     void initUsersTable();
     void initMaterialsTable();
@@ -53,11 +59,13 @@ private:
     void initTattooArtistsTable();
     void initMaterialAlarmUsersTable();
     void initMaterialCriticalAmountTable();
+    void initSessionsTable();
 
     UsersTable::UserRow getUserRowFromStatement(SQLite::Statement& statement);
     MaterialsTable::MaterialRow getMaterialRowFromStatement(SQLite::Statement& statement);
     MaterialCriticalAmountTable::MaterialCriticalAmountRow
     getMaterialCriticalAmountRowFromStatement(SQLite::Statement& statement);
+    SessionsTable::SessionRow getSessionRowFromStatement(SQLite::Statement& statement);
 
 private:
     std::string_view mDbPathname;
@@ -69,4 +77,5 @@ private:
     bool isUsersVectorUpdated;
     bool isMaterialsVectorUpdated;
     bool isMaterialCriticalAmountVectorUpdated;
+    bool isSessionsVectorUpdated;
 };
