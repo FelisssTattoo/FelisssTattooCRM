@@ -1,15 +1,16 @@
 #include "felisss_logger/felisss_logger.h"
 
 #include "bot_manager/bot_manager.h"
+#include "bot_manager/timer.h"
 #include "config_manager/config_manager.h"
 #include "database_manager/database_manager.h"
+
+#include <felisss_tattoo/cmake_vars.h>
 
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
 #include <string>
-
-#include "bot_manager/timer.h"
 
 static volatile sig_atomic_t done = 0;
 
@@ -38,20 +39,21 @@ int main() {
     try {
         FelisssLogger::init();
 
+        spdlog::info("FelisssTattooBot started...");
+
         if (!(install_done(SIGINT) && install_done(SIGHUP) && install_done(SIGTERM))) {
             return EXIT_FAILURE;
         }
 
-        auto config_values = ConfigManager::getConfigValues();
-        auto token         = config_values.token;
-        if (!token) {
-            SPDLOG_CRITICAL("Token not specified in env");
-            return EXIT_FAILURE;
+        auto config_values = ConfigManager::getConfigValues(CONFIG_PATHNAME);
+        if (!config_values.has_value()) {
+            throw std::runtime_error(fmt::format("Couldn't parse config file {}", CONFIG_PATHNAME));
         }
+        auto token = config_values->token;
 
         spdlog::info("Token: {}", *token);
         if (*token == "<your_bot_token_here>") {
-            SPDLOG_CRITICAL("Specify token in config.json");
+            SPDLOG_CRITICAL("Specify token in {}", CONFIG_PATHNAME);
             return EXIT_FAILURE;
         }
 

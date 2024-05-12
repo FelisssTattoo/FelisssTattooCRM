@@ -58,3 +58,24 @@ From root of project, run
 ./scripts/run_clang_tidy.sh
 ```
 to run static analyze
+
+# Run as a service
+## Build
+You need to build binary with static linked libraries
+
+```bash
+cmake -B build
+```
+
+## Install files in system
+
+```bash
+cd build
+sudo make install
+```
+
+## Run service
+```bash
+systemctl start felisss_tattoo
+systemctl enable felisss_tattoo
+```

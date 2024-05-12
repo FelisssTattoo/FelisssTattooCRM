@@ -10,8 +10,5 @@ public:
     };
 
 public:
-    static ConfigValues getConfigValues();
-
-private:
-    static constexpr std::string_view mConfigPathname = "config.json";
+    static std::optional<ConfigValues> getConfigValues(const std::string_view& config_pathname);
 };

@@ -1,0 +1,5 @@
+#pragma once
+
+#define CONFIG_PATHNAME "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR@/felisss_tattoo/config.json"
+#define DATABASE_PATHNAME "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR@/felisss_tattoo/felisss.db"
+#define LOGS_PATHNAME "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LOCALSTATEDIR@/felisss_tattoo/logfile"

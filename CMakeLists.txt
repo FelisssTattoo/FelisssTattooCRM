@@ -16,12 +16,6 @@ if(RUN_CLANG_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "clang-tidy-16")
 endif(RUN_CLANG_TIDY)
 
-if (NOT EXISTS ${CMAKE_BINARY_DIR}/config.json)
-    file(COPY ${CMAKE_SOURCE_DIR}/samples/config.json
-        DESTINATION ${CMAKE_BINARY_DIR}
-    )
-endif()
-
 file(GLOB_RECURSE srcs "src/**")
 add_executable(${PROJECT_NAME} ${srcs})
 
@@ -35,4 +29,14 @@ set(LIBS_LIST
 
 target_link_libraries(${PROJECT_NAME} ${LIBS_LIST})
 
-target_include_directories(${PROJECT_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/src")
+set(CMAKE_INSTALL_PREFIX "")
+set(IN_FILE "${PROJECT_SOURCE_DIR}/generated_files/cmake_vars.h.in")
+set(GENERATED_FILE_PATH "${PROJECT_BINARY_DIR}/generated_files")  
+set(OUT_FILE "${GENERATED_FILE_PATH}/felisss_tattoo/cmake_vars.h")
+configure_file("${IN_FILE}" "${OUT_FILE}" @ONLY)
+
+target_include_directories(${PROJECT_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/src" "${GENERATED_FILE_PATH}")
+
+install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(DIRECTORY "samples/felisss_tattoo" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})
+install(FILES "samples/felisss_tattoo.service" DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/systemd/system")

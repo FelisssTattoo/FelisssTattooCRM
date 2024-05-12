@@ -4,6 +4,7 @@
 #include "timer.h"
 
 #include <database_manager/database_manager.h>
+#include <felisss_tattoo/cmake_vars.h>
 
 #include <tgbot/tgbot.h>
 
@@ -64,7 +65,7 @@ private:
     TgBot::TgLongPoll mLongPoll;
 
     DatabaseManager mDatabaseManager;
-    static constexpr std::string_view DATABASE_PATHNAME = "felisss.db";
+    static constexpr std::string_view DB_PATHNAME = DATABASE_PATHNAME;
     static constexpr std::string_view ERROR_MESSAGE
         = "На жаль сталась помилка. Спробуйте ще раз або зверніться до адміністратора";
 

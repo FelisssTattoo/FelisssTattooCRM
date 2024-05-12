@@ -6,8 +6,9 @@
 
 #include <fstream>
 
-ConfigManager::ConfigValues ConfigManager::getConfigValues() {
-    std::ifstream file_handler(mConfigPathname.data());
+std::optional<ConfigManager::ConfigValues>
+ConfigManager::getConfigValues(const std::string_view& config_pathname) {
+    std::ifstream file_handler(config_pathname.data());
 
     nlohmann::json json_object;
     try {

@@ -22,7 +22,7 @@ TgBot::InlineKeyboardMarkup::Ptr
     BotManager::mChooseCriticalAmountMaterialMenuToUpdateDelete(new TgBot::InlineKeyboardMarkup);
 
 BotManager::BotManager(const std::string& token) :
-    mToken(token), mBotHandler(token), mLongPoll(mBotHandler), mDatabaseManager(DATABASE_PATHNAME) {
+    mToken(token), mBotHandler(token), mLongPoll(mBotHandler), mDatabaseManager(DB_PATHNAME) {
     init();
 }
 
