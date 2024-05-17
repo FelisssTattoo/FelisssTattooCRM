@@ -7,8 +7,15 @@
 
 TgBot::InlineKeyboardButton::Ptr BotManager::mBackButton(new TgBot::InlineKeyboardButton);
 
+TgBot::ReplyKeyboardMarkup::Ptr BotManager::mSkipMenu(new TgBot::ReplyKeyboardMarkup);
+
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMainMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mSessionsMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr
+    BotManager::mChooseTattooArtistMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseUserMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseSessionMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr BotManager::mUsersMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMaterialsMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseMaterialMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr
@@ -54,11 +61,26 @@ void BotManager::init() {
     mAlarmMessageTimer.setCallback(std::bind(&BotManager::sendMaterialAlarms, this));
     mAlarmMessageTimer.setSingleShot(true);
     mAlarmMessageTimer.setInterval(mAlarmMessageDelayMinutes * 60 * 1000);
+
+    mSessionReminderTimer.setCallback(
+        std::bind(&BotManager::sendSessionReminderIfNessessory, this));
+    mSessionReminderTimer.setInterval(60 * 1000);
+    mSessionReminderTimer.startOrReset();
 }
 
 void BotManager::initMenus() {
     mBackButton->text         = "<< Назад в меню";
     mBackButton->callbackData = "back_button";
+
+    mSkipMenu->isPersistent    = false;
+    mSkipMenu->oneTimeKeyboard = true;
+    mSkipMenu->resizeKeyboard  = true;
+
+    TgBot::KeyboardButton::Ptr skip_button(new TgBot::KeyboardButton);
+    skip_button->text            = SKIP_BUTTON_TEXT.data();
+    skip_button->requestContact  = false;
+    skip_button->requestLocation = false;
+    mSkipMenu->keyboard.push_back({skip_button});
 
     TgBot::InlineKeyboardButton::Ptr materials_button(new TgBot::InlineKeyboardButton);
     materials_button->text         = "Матеріали";
@@ -66,8 +88,12 @@ void BotManager::initMenus() {
     TgBot::InlineKeyboardButton::Ptr sessions_button(new TgBot::InlineKeyboardButton);
     sessions_button->text         = "Сеанси";
     sessions_button->callbackData = "sessions";
+    TgBot::InlineKeyboardButton::Ptr users_button(new TgBot::InlineKeyboardButton);
+    users_button->text         = "Користувачі";
+    users_button->callbackData = "users";
     mMainMenu->inlineKeyboard.push_back({materials_button});
     mMainMenu->inlineKeyboard.push_back({sessions_button});
+    mMainMenu->inlineKeyboard.push_back({users_button});
 
     TgBot::InlineKeyboardButton::Ptr materials_menu_add_material(new TgBot::InlineKeyboardButton);
     TgBot::InlineKeyboardButton::Ptr materials_menu_delete_material(
@@ -122,18 +148,23 @@ void BotManager::initMenus() {
     mMaterialsMenu->inlineKeyboard.push_back({mBackButton});
 
     TgBot::InlineKeyboardButton::Ptr add_session_bt(new TgBot::InlineKeyboardButton);
-    TgBot::InlineKeyboardButton::Ptr update_session_bt(new TgBot::InlineKeyboardButton);
     TgBot::InlineKeyboardButton::Ptr delete_session_bt(new TgBot::InlineKeyboardButton);
     add_session_bt->text            = "Додати сеанс";
     add_session_bt->callbackData    = "add_session";
-    update_session_bt->text         = "Оновити сеанс";
-    update_session_bt->callbackData = "update_session";
     delete_session_bt->text         = "Скасувати сеанс";
     delete_session_bt->callbackData = "delete_session";
 
-    mSessionsMenu->inlineKeyboard.push_back({add_session_bt, update_session_bt});
-    mSessionsMenu->inlineKeyboard.push_back({delete_session_bt});
+    mSessionsMenu->inlineKeyboard.push_back({add_session_bt, delete_session_bt});
     mSessionsMenu->inlineKeyboard.push_back({mBackButton});
+
+    TgBot::InlineKeyboardButton::Ptr add_user_bt(new TgBot::InlineKeyboardButton);
+    TgBot::InlineKeyboardButton::Ptr delete_user_bt(new TgBot::InlineKeyboardButton);
+    add_user_bt->text            = "Додати користувача";
+    add_user_bt->callbackData    = "add_user";
+    delete_user_bt->text         = "Видалити користувача";
+    delete_user_bt->callbackData = "delete_user";
+    mUsersMenu->inlineKeyboard.push_back({add_user_bt, delete_user_bt});
+    mUsersMenu->inlineKeyboard.push_back({mBackButton});
 }
 
 void BotManager::sendMessage(std::int64_t telegram_id, const std::string& message) {
@@ -259,34 +290,15 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 return;
             }
 
-            client_status->do_user_specify_material_suffix = true;
             client_status->updating_material.name          = message->text;
-
-            static TgBot::ReplyKeyboardMarkup::Ptr material_suffix_reply_keyboard(
-                new TgBot::ReplyKeyboardMarkup);
-            static bool isFirstTime = true;
-            if (isFirstTime) {
-                isFirstTime                                     = false;
-                material_suffix_reply_keyboard->isPersistent    = false;
-                material_suffix_reply_keyboard->oneTimeKeyboard = true;
-
-                TgBot::KeyboardButton::Ptr material_suffix_no_suffix_button(
-                    new TgBot::KeyboardButton);
-                material_suffix_no_suffix_button->text = "Матеріал не має одиниці виміру";
-                material_suffix_no_suffix_button->requestContact  = false;
-                material_suffix_no_suffix_button->requestLocation = false;
-                material_suffix_reply_keyboard->keyboard.push_back(
-                    {material_suffix_no_suffix_button});
-            }
-            sendMenuWithMessage(message, material_suffix_reply_keyboard,
-                                "В чому вимірюється одиниця матеріалу?");
+            client_status->do_user_specify_material_suffix = true;
+            sendMenuWithMessage(message, mSkipMenu, "В чому вимірюється одиниця матеріалу?");
         } else if (client_status->do_user_specify_material_suffix) {
             client_status->do_user_specify_material_suffix = false;
-            client_status->do_user_specify_material_count  = true;
-
-            if (message->text != "Матеріал не має одиниці виміру") {
+            if (message->text != SKIP_BUTTON_TEXT) {
                 client_status->updating_material.suffix = message->text;
             }
+            client_status->do_user_specify_material_count = true;
             sendMessage(message, "Скільки зараз одиниць матеріалу в салоні?");
         } else if (client_status->do_user_specify_material_count) {
             client_status->do_user_specify_material_count = false;
@@ -330,7 +342,6 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             } else {
                 sendMessage(message, ERROR_MESSAGE.data());
             }
-
             updateChooseMaterialMenu();
             sendCurrentMenu(message);
         } else if (client_status->do_user_choose_material_critical_amount_to_add) {
@@ -351,7 +362,6 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 } else {
                     sendMessage(message, ERROR_MESSAGE.data());
                 }
-
             } catch (const std::exception& e) {
                 sendMessage(message, ERROR_MESSAGE.data());
                 SPDLOG_ERROR("{}", e.what());
@@ -392,12 +402,35 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             }
             auto tp = DatabaseManagerTools::convertStrToTimePoint(message->text);
             if (!tp.has_value()) {
-                sendMessage(message, "Неправильн зазначена дата");
+                sendMessage(message, "Неправильно зазначена дата");
                 sendCurrentMenu(message);
                 return;
             }
             client_status->session_row.date_time
                 = DatabaseManagerTools::convertTimePointToStr(*tp).value();
+
+            client_status->do_user_choose_user_for_session = true;
+            updateChooseUserMenu();
+            client_status->current_menu = mChooseUserMenu;
+            sendCurrentMenu(message);
+        } else if (client_status->do_user_type_user_name) {
+            client_status->user_row.name             = message->text;
+            client_status->do_user_type_user_name    = false;
+            client_status->do_user_type_user_surname = true;
+            sendMenuWithMessage(message, mSkipMenu, "Введіть прізвище(можна пропустити):");
+        } else if (client_status->do_user_type_user_surname) {
+            if (message->text != SKIP_BUTTON_TEXT) {
+                client_status->user_row.surname = message->text;
+            }
+            client_status->do_user_type_user_surname = false;
+            if (mDatabaseManager.addUser(client_status->user_row)) {
+                sendMessage(message, fmt::format("{} додано в базу даних",
+                                                 formUserInfoStr(client_status->user_row)));
+            } else {
+                sendMessage(message, fmt::format("Не вдалося {} додати в базу даних",
+                                                 formUserInfoStr(client_status->user_row)));
+            }
+            sendCurrentMenu(message);
         } else {
             sendMessage(message, "Невідомий статус чату");
             sendCurrentMenu(message);
@@ -567,18 +600,114 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
             client_status->current_menu = mSessionsMenu;
             editCurrentMenu(query->message);
         } else if (query->data == "add_session") {
-            sendMessage(
-                query->message,
-                "Відправ дату сеансу у форматі dd/mm/year, а також додай hh:mm якщо відомий час:");
-            client_status->do_user_type_date = true;
-        } else if (query->data == "update_session") {
-
+            client_status->session_row = SessionsTable::SessionRow{};
+            updateChooseTattooArtistMenu();
+            client_status->current_menu = mChooseTattooArtistMenu;
+            editCurrentMenu(query->message);
         } else if (query->data == "delete_session") {
+            updateChooseSessionMenu();
+            client_status->current_menu = mChooseSessionMenu;
+            editCurrentMenu(query->message);
+        } else if (StringTools::startsWith(query->data, CHOOSE_TATTOO_ARTIST_PREFIX.data())) {
+            try {
+                std::string data_str(query->data);
+                data_str.erase(0, CHOOSE_TATTOO_ARTIST_PREFIX.length());
+
+                std::int64_t tattoo_artist_id = std::stoll(data_str);
+
+                sendMessage(query->message, "Відправ дату сеансу у форматі dd/mm/year, а також "
+                                            "додай hh:mm якщо відомий час:");
+                client_status->session_row.tattoo_artist_id = tattoo_artist_id;
+                client_status->do_user_type_date            = true;
+            } catch (const std::exception& e) {
+                SPDLOG_ERROR("{}", e.what());
+                sendMessage(query->message, ERROR_MESSAGE.data());
+            }
+        } else if (StringTools::startsWith(query->data, CHOOSE_USER_PREFIX.data())) {
+            try {
+                std::string data_str(query->data);
+                data_str.erase(0, CHOOSE_USER_PREFIX.length());
+
+                if (client_status->do_user_choose_user_for_session) {
+                    client_status->do_user_choose_user_for_session = false;
+                    if (data_str != "no") {
+                        client_status->session_row.user_id = std::stoll(data_str);
+                    }
+
+                    if (mDatabaseManager.addSession(client_status->session_row)) {
+                        sendMessage(query->message,
+                                    fmt::format("{} додано в бази даних",
+                                                formSessionInfoStr(client_status->session_row)));
+                    } else {
+                        sendMessage(query->message,
+                                    fmt::format("не вдалося додади {} в бази даних",
+                                                formSessionInfoStr(client_status->session_row)));
+                    }
+                    client_status->current_menu = mSessionsMenu;
+                    sendCurrentMenu(query->message);
+                } else if (client_status->do_user_choose_user_to_delete) {
+                    client_status->do_user_choose_user_to_delete = false;
+
+                    if (data_str != "no") {
+                        const auto user
+                            = mDatabaseManager.getUserById(std::stoll(data_str)).value();
+                        const auto user_str = formUserInfoStr(user);
+                        if (mDatabaseManager.deleteUser(user.id.value())) {
+                            sendMessage(
+                                query->message,
+                                fmt::format("Користувача {} було видалено з бази даних", user_str));
+                        } else {
+                            sendMessage(
+                                query->message,
+                                fmt::format("Користувача {} не вдалося видалити з бази даних",
+                                            user_str));
+                        }
+                    }
+
+                    client_status->current_menu = mUsersMenu;
+                    sendCurrentMenu(query->message);
+                }
+            } catch (const std::exception& e) {
+                SPDLOG_ERROR("{}", e.what());
+                sendMessage(query->message, ERROR_MESSAGE.data());
+            }
+        } else if (StringTools::startsWith(query->data, CHOOSE_SESSION_PREFIX.data())) {
+            try {
+                std::string data_str(query->data);
+                data_str.erase(0, CHOOSE_SESSION_PREFIX.length());
+
+                const auto session_id = std::stoll(data_str);
+
+                const auto session_to_delete = mDatabaseManager.getSessionById(session_id).value();
+                if (mDatabaseManager.deleteSession(session_id)) {
+                    sendMessage(query->message, fmt::format("{} видалено з бази даних",
+                                                            formSessionInfoStr(session_to_delete)));
+                } else {
+                    sendMessage(query->message, fmt::format("не вдалося видалити {} з бази даних",
+                                                            formSessionInfoStr(session_to_delete)));
+                }
+                client_status->current_menu = mSessionsMenu;
+                sendCurrentMenu(query->message);
+            } catch (const std::exception& e) {
+                SPDLOG_ERROR("{}", e.what());
+                sendMessage(query->message, ERROR_MESSAGE.data());
+            }
+        } else if (query->data == "users") {
+            client_status->current_menu = mUsersMenu;
+            editCurrentMenu(query->message);
+        } else if (query->data == "add_user") {
+            client_status->clearAllProperties();
+            client_status->do_user_type_user_name = true;
+            sendMessage(query->message, "Введіть імя користувача");
+        } else if (query->data == "delete_user") {
+            client_status->do_user_choose_user_to_delete = true;
+            updateChooseUserMenu();
+            client_status->current_menu = mChooseUserMenu;
+            editCurrentMenu(query->message);
         }
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
-        sendMessage(query->message,
-                    "На жаль сталося помилка. Спробуйте ще раз або зверніться до адміністратора");
+        sendMessage(query->message, ERROR_MESSAGE.data());
     }
 }
 
@@ -689,6 +818,57 @@ void BotManager::updateChooseMaterialAlarmUserMenu() {
     mChooseMaterialAlarmUserMenu->inlineKeyboard.push_back({mBackButton});
 }
 
+void BotManager::updateChooseTattooArtistMenu() {
+    mChooseTattooArtistMenu->inlineKeyboard.clear();
+
+    const auto tattoo_artists = mDatabaseManager.getTattooArtists();
+    for (const auto& tattoo_artist : tattoo_artists) {
+        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        button->text         = formUserInfoStr(tattoo_artist);
+        button->callbackData = fmt::format("{}{}", CHOOSE_TATTOO_ARTIST_PREFIX.data(),
+                                           tattoo_artist.id.value());
+
+        mChooseTattooArtistMenu->inlineKeyboard.push_back({button});
+    }
+
+    mChooseTattooArtistMenu->inlineKeyboard.push_back({mBackButton});
+}
+
+void BotManager::updateChooseUserMenu() {
+    mChooseUserMenu->inlineKeyboard.clear();
+    TgBot::InlineKeyboardButton::Ptr no_user_bt(new TgBot::InlineKeyboardButton);
+    no_user_bt->text         = "Без користувача";
+    no_user_bt->callbackData = fmt::format("{}{}", CHOOSE_USER_PREFIX.data(), "no");
+    mChooseUserMenu->inlineKeyboard.push_back({no_user_bt});
+
+    const auto users = mDatabaseManager.getUsers();
+    for (const auto& user : users) {
+        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        button->text         = formUserInfoStr(user);
+        button->callbackData = fmt::format("{}{}", CHOOSE_USER_PREFIX.data(), user.id.value());
+
+        mChooseUserMenu->inlineKeyboard.push_back({button});
+    }
+
+    mChooseUserMenu->inlineKeyboard.push_back({mBackButton});
+}
+
+void BotManager::updateChooseSessionMenu() {
+    mChooseSessionMenu->inlineKeyboard.clear();
+
+    const auto sessions = mDatabaseManager.getSessions();
+    for (const auto& session : sessions) {
+        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        button->text         = formSessionInfoStr(session);
+        button->callbackData = fmt::format("{}{}", CHOOSE_SESSION_PREFIX.data(),
+                                           session.id.value());
+
+        mChooseSessionMenu->inlineKeyboard.push_back({button});
+    }
+
+    mChooseSessionMenu->inlineKeyboard.push_back({mBackButton});
+}
+
 std::string BotManager::formUserInfoStr(const TgBot::User::Ptr& user) {
     UsersTable::UserRow user_row;
     user_row.name = user->firstName;
@@ -720,14 +900,19 @@ std::string BotManager::formMaterialInfoStr(const MaterialsTable::MaterialRow& m
 }
 
 std::string BotManager::formSessionInfoStr(const SessionsTable::SessionRow& row) {
-    const auto tattoo_artist = mDatabaseManager.getUserById(row.tattoo_artist_id);
-    std::string ret_str(
-        fmt::format("сеанс у {} на {}", formUserInfoStr(tattoo_artist.value()), row.date_time));
-    if (row.user_id.has_value()) {
-        const auto customer = mDatabaseManager.getUserById(row.user_id.value());
-        if (customer.has_value()) {
-            ret_str.append(fmt::format(" для {}", formUserInfoStr(customer.value())));
+    std::string ret_str;
+    try {
+        const auto tattoo_artist = mDatabaseManager.getUserById(row.tattoo_artist_id);
+        ret_str = fmt::format("сеанс у {} на {}", formUserInfoStr(tattoo_artist.value()),
+                              row.date_time);
+        if (row.user_id.has_value()) {
+            const auto customer = mDatabaseManager.getUserById(row.user_id.value());
+            if (customer.has_value()) {
+                ret_str.append(fmt::format(" для {}", formUserInfoStr(customer.value())));
+            }
         }
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
     }
     return ret_str;
 }
@@ -743,7 +928,7 @@ void BotManager::sendMaterialAlarms() {
                 = mDatabaseManager.getMaterialCriticalAmountByMaterialId(
                     critical_material.id.value());
             message.append(fmt::format(
-                " - {} має критичну кількість {} < {}\n", formMaterialInfoStr(critical_material),
+                " - {} має критичну кількість {} <= {}\n", formMaterialInfoStr(critical_material),
                 critical_material.count, material_critical_amount.value().critical_amount));
         }
         for (const auto& user : users) {
@@ -761,6 +946,57 @@ void BotManager::scheduleCriticalAmountMessageIfNessessory() {
     } else {
         mAlarmMessageTimer.stop();
     }
+}
+
+void BotManager::sendSessionReminderIfNessessory() {
+    const auto sessions = mDatabaseManager.getSessionsInFuture();
+    if (sessions.size()) {
+        const auto now_tm = DatabaseManagerTools::convertTimePointToTm(
+            std::chrono::system_clock::now());
+
+        for (const auto& session : sessions) {
+            const auto session_tp
+                = DatabaseManagerTools::convertStrToTimePoint(session.date_time).value();
+            std::tm session_tm = DatabaseManagerTools::convertTimePointToTm(session_tp);
+
+            // reminder the hour before
+            if (session_tm.tm_hour != 00) {
+                if (now_tm.tm_mday == session_tm.tm_mday && now_tm.tm_mon == session_tm.tm_mon
+                    && now_tm.tm_yday == session_tm.tm_yday) {
+                    if (now_tm.tm_hour == session_tm.tm_hour - 1
+                        && now_tm.tm_min == session_tm.tm_min) {
+                        sendSessionReminder(session);
+                    }
+                }
+            }
+
+            const auto the_day_before_session       = session_tp - std::chrono::hours(24);
+            std::time_t the_day_before_session_time = std::chrono::system_clock::to_time_t(
+                the_day_before_session);
+            std::tm the_day_before_session_tm = *std::localtime(&the_day_before_session_time);
+
+            if (now_tm.tm_mday == the_day_before_session_tm.tm_mday
+                && now_tm.tm_mon == the_day_before_session_tm.tm_mon
+                && now_tm.tm_yday == the_day_before_session_tm.tm_yday) {
+                if (now_tm.tm_hour == 18 && now_tm.tm_min == 0) {
+                    sendSessionReminder(session);
+                }
+            }
+        }
+    }
+}
+
+void BotManager::sendSessionReminder(const SessionsTable::SessionRow& row) {
+    const auto tattoo_artist = *mDatabaseManager.getUserById(row.tattoo_artist_id);
+    std::string message(fmt::format("Нагадування: в тебе сеанс на {}", row.date_time));
+    if (row.user_id) {
+        const auto customer = *mDatabaseManager.getUserById(*row.user_id);
+        message.append(fmt::format(" для {}", formUserInfoStr(customer)));
+    }
+
+    spdlog::info("Sending session reminder for {}, at {}", formUserInfoStr(tattoo_artist),
+                 row.date_time);
+    sendMessage(tattoo_artist.telegram_id.value(), message);
 }
 
 std::shared_ptr<ClientChatStatus>
@@ -813,11 +1049,20 @@ BotManager::getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu) {
         }
         ret_message.append(choose_option_str);
     } else if (menu == mSessionsMenu) {
-        ret_message.assign("Сеанси:\n");
-        for (const auto& session : mDatabaseManager.getSessionsInFuture()) {
-            ret_message.append(fmt::format(" - {}\n", formSessionInfoStr(session)));
+        const auto sessions = mDatabaseManager.getSessionsInFuture();
+        if (sessions.size()) {
+            ret_message.assign("Сеанси:\n");
+            for (const auto& session : sessions) {
+                ret_message.append(fmt::format(" - {}\n", formSessionInfoStr(session)));
+            }
         }
         ret_message.append(choose_option_str);
+    } else if (menu == mChooseTattooArtistMenu) {
+        ret_message = "Виберіть тату майстра:";
+    } else if (menu == mChooseUserMenu) {
+        ret_message = "Виберіть користувача:";
+    } else if (menu == mChooseSessionMenu) {
+        ret_message = "Виберіть сеанс:";
     } else if (menu == mChooseMaterialMenu) {
         ret_message = choose_option_str;
     } else if (menu == mChooseMaterialAlarmUserMenu) {
@@ -840,6 +1085,15 @@ BotManager::getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu) {
         ret_message = choose_option_str;
     } else if (menu == mChooseCriticalAmountMaterialMenuToUpdateDelete) {
         ret_message = choose_option_str;
+    } else if (menu == mUsersMenu) {
+        const auto users = mDatabaseManager.getUsers();
+        if (users.size()) {
+            ret_message.assign("Користувачі в системі:\n");
+            for (const auto& user : users) {
+                ret_message.append(fmt::format("- {}\n", formUserInfoStr(user)));
+            }
+        }
+        ret_message.append(choose_option_str);
     } else {
         SPDLOG_ERROR("Нема відповідного меню");
         return {};
@@ -856,6 +1110,10 @@ BotManager::returnPreviousMenu(const TgBot::InlineKeyboardMarkup::Ptr& current_m
         return mMainMenu;
     } else if (current_menu == mSessionsMenu) {
         return mMainMenu;
+    } else if (current_menu == mChooseTattooArtistMenu) {
+        return mSessionsMenu;
+    } else if (current_menu == mChooseUserMenu) {
+        return mSessionsMenu;
     } else if (current_menu == mChooseMaterialMenu) {
         return mMaterialsMenu;
     } else if (current_menu == mChooseMaterialAlarmUserMenu) {
@@ -868,6 +1126,8 @@ BotManager::returnPreviousMenu(const TgBot::InlineKeyboardMarkup::Ptr& current_m
         return mConfigureMaterialCriticalAmountMenu;
     } else if (current_menu == mChooseCriticalAmountMaterialMenuToUpdateDelete) {
         return mConfigureMaterialCriticalAmountMenu;
+    } else if (current_menu == mUsersMenu) {
+        return mMainMenu;
     } else {
         SPDLOG_ERROR("Not valid current menu");
         return mMainMenu;

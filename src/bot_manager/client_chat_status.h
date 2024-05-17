@@ -21,8 +21,20 @@ public:
     bool do_user_type_material_critical_amount_to_update   = false;
     bool do_user_choose_material_critical_amount_to_delete = false;
 
-    bool do_user_type_date = false;
+    bool do_user_type_date               = false;
+    bool do_user_choose_user_for_session = false;
     SessionsTable::SessionRow session_row{};
+
+    bool do_user_type_user_name         = false;
+    bool do_user_type_user_surname      = false;
+    bool do_user_type_user_patronymic   = false;
+    bool do_user_type_user_birthdate    = false;
+    bool do_user_type_user_phone_number = false;
+    bool do_user_type_user_telegram     = false;
+    bool do_user_type_user_instagram    = false;
+    UsersTable::UserRow user_row{};
+
+    bool do_user_choose_user_to_delete = false;
 
     void clearAllProperties();
 };

@@ -55,6 +55,19 @@ std::vector<UsersTable::UserRow> DatabaseManager::getUsers() {
     return users_vector;
 }
 
+bool DatabaseManager::deleteUser(std::int64_t id) {
+    try {
+        const bool is_okay = mDbHandler.exec(UsersTable::formDeleteRowQuery(id));
+        if (is_okay) {
+            isUsersVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
 std::optional<UsersTable::UserRow> DatabaseManager::getUserById(std::int64_t id) {
     const auto users = getUsers();
 
@@ -552,6 +565,19 @@ bool DatabaseManager::addSession(const SessionsTable::SessionRow& row) {
     }
 }
 
+bool DatabaseManager::deleteSession(std::int64_t id) {
+    try {
+        const bool is_okay = mDbHandler.exec(SessionsTable::formDeleteRowQuery(id));
+        if (is_okay) {
+            isSessionsVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
 std::vector<SessionsTable::SessionRow> DatabaseManager::getSessions() {
     static std::vector<SessionsTable::SessionRow> sessions_vector;
 
@@ -567,6 +593,20 @@ std::vector<SessionsTable::SessionRow> DatabaseManager::getSessions() {
     }
 
     return sessions_vector;
+}
+
+std::optional<SessionsTable::SessionRow> DatabaseManager::getSessionById(std::int64_t id) {
+    const auto sessions      = getSessions();
+    const auto found_session = std::find_if(sessions.begin(), sessions.end(),
+                                            [id](const auto& session) {
+                                                return (id == session.id.value());
+                                            });
+
+    if (found_session != sessions.end()) {
+        return *found_session;
+    }
+
+    return {};
 }
 
 std::vector<SessionsTable::SessionRow> DatabaseManager::getSessionsInFuture() {

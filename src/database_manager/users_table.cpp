@@ -39,3 +39,9 @@ std::string UsersTable::formSelectRowQuery() {
 
     return return_str;
 }
+
+std::string UsersTable::formDeleteRowQuery(std::int64_t id) {
+    const auto return_str = fmt::format("DELETE FROM {} WHERE user_id = {};", TABLE_NAME, id);
+
+    return return_str;
+}

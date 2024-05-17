@@ -22,6 +22,7 @@ public:
     static std::string formCreateTableQuery();
     static std::string formInsertRowQuery(const UserRow& row);
     static std::string formSelectRowQuery();
+    static std::string formDeleteRowQuery(std::int64_t id);
 
     static constexpr std::string_view TABLE_NAME = "users";
     static std::vector<ColumnType> COLUMNS;

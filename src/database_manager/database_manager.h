@@ -16,6 +16,7 @@ public:
 
     bool addUser(const UsersTable::UserRow& user_row);
     std::vector<UsersTable::UserRow> getUsers();
+    bool deleteUser(std::int64_t id);
     std::optional<UsersTable::UserRow> getUserById(std::int64_t id);
     std::optional<UsersTable::UserRow> getUserByTelegramId(std::int64_t telegram_id);
 
@@ -49,7 +50,9 @@ public:
     std::vector<MaterialsTable::MaterialRow> getCriticalMaterials();
 
     bool addSession(const SessionsTable::SessionRow& row);
+    bool deleteSession(std::int64_t id);
     std::vector<SessionsTable::SessionRow> getSessions();
+    std::optional<SessionsTable::SessionRow> getSessionById(std::int64_t id);
     std::vector<SessionsTable::SessionRow> getSessionsInFuture();
 
 private:

@@ -43,6 +43,9 @@ private:
     void updateChooseMaterialCriticalAmountToAdd();
     void updateChooseMaterialCriticalAmountToUpdateDelete();
     void updateChooseMaterialAlarmUserMenu();
+    void updateChooseTattooArtistMenu();
+    void updateChooseUserMenu();
+    void updateChooseSessionMenu();
 
     std::string formUserInfoStr(const TgBot::User::Ptr& user);
     std::string formUserInfoStr(const UsersTable::UserRow& user_row);
@@ -51,6 +54,9 @@ private:
 
     void sendMaterialAlarms();
     void scheduleCriticalAmountMessageIfNessessory();
+
+    void sendSessionReminderIfNessessory();
+    void sendSessionReminder(const SessionsTable::SessionRow& row);
 
     std::shared_ptr<ClientChatStatus> getClientChatStatus(const TgBot::Message::Ptr& message);
     void insertUserInTableIfNotExists(const TgBot::Message::Ptr& message);
@@ -76,10 +82,18 @@ private:
     Timer mAlarmMessageTimer;
     int mAlarmMessageDelayMinutes = 1;
 
+    Timer mSessionReminderTimer;
+
     static TgBot::InlineKeyboardButton::Ptr mBackButton;
+
+    static TgBot::ReplyKeyboardMarkup::Ptr mSkipMenu;
 
     static TgBot::InlineKeyboardMarkup::Ptr mMainMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mSessionsMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseTattooArtistMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseUserMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mChooseSessionMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mUsersMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mMaterialsMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialAlarmUserMenu;
@@ -88,7 +102,13 @@ private:
     static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenuToUpdateDelete;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseCriticalAmountMaterialMenu;
 
-    static constexpr std::string_view PARSE_MODE                        = "";
+    static constexpr std::string_view PARSE_MODE = "";
+
+    static constexpr std::string_view SKIP_BUTTON_TEXT = "Пропустити";
+
     static constexpr std::string_view CHOOSE_MATERIAL_PREFIX            = "material_id_";
     static constexpr std::string_view CHOOSE_MATERIAL_ALARM_USER_PREFIX = "material_alarm_user_id_";
+    static constexpr std::string_view CHOOSE_TATTOO_ARTIST_PREFIX       = "tattoo_artist_id_";
+    static constexpr std::string_view CHOOSE_USER_PREFIX                = "user_id_";
+    static constexpr std::string_view CHOOSE_SESSION_PREFIX             = "session_id_";
 };

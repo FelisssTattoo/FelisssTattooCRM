@@ -58,6 +58,15 @@ bool DatabaseManagerTools::isValidDateTimeFormat(const std::string& time_str) {
     return (std::regex_match(time_str, full_dt_format) || std::regex_match(time_str, date_format));
 }
 
+std::tm DatabaseManagerTools::convertTimePointToTm(
+    const std::chrono::system_clock::time_point& time_point) {
+    const auto time = std::chrono::system_clock::to_time_t(time_point);
+    auto tm         = *std::localtime(&time);
+    tm.tm_year += 1900;
+    tm.tm_mon += 1;
+    return tm;
+}
+
 std::string DatabaseManagerTools::sqlTypeToStr(SqlType sql_type) {
     switch (sql_type) {
         case SqlType::INTEGER: {

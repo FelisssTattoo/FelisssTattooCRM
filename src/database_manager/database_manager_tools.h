@@ -13,6 +13,7 @@ public:
     static std::optional<std::string>
     convertTimePointToStr(const std::chrono::system_clock::time_point& time_point);
     static bool isValidDateTimeFormat(const std::string& time_str);
+    static std::tm convertTimePointToTm(const std::chrono::system_clock::time_point& time_point);
 
     static std::string sqlTypeToStr(SqlType sql_type);
     static std::string formCreateTableQuery(const std::string& table_name,
