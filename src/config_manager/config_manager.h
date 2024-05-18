@@ -7,6 +7,7 @@ class ConfigManager {
 public:
     struct ConfigValues {
         std::optional<std::string> token;
+        std::optional<std::string> admin_pass;
     };
 
 public:

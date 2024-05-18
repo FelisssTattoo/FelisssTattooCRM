@@ -49,15 +49,26 @@ int main() {
         if (!config_values.has_value()) {
             throw std::runtime_error(fmt::format("Couldn't parse config file {}", CONFIG_PATHNAME));
         }
-        auto token = config_values->token;
+        const auto token = config_values->token;
 
-        spdlog::info("Token: {}", *token);
+        spdlog::info("token: {}", *token);
         if (*token == "<your_bot_token_here>") {
             SPDLOG_CRITICAL("Specify token in {}", CONFIG_PATHNAME);
             return EXIT_FAILURE;
         }
 
-        BotManager bot(*token);
+        const auto admin_pass = config_values->admin_pass;
+        if (!admin_pass) {
+            SPDLOG_CRITICAL("There is no admin_pass in {}", CONFIG_PATHNAME);
+            return EXIT_FAILURE;
+        }
+        spdlog::info("admin_pass: {}", *admin_pass);
+        if (*admin_pass == "<admin_password_here>") {
+            SPDLOG_CRITICAL("Specify admin_pass in {}", CONFIG_PATHNAME);
+            return EXIT_FAILURE;
+        }
+
+        BotManager bot(*token, *admin_pass);
         while (!done) {
             bot.poll();
         }

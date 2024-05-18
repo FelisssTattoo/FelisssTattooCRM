@@ -12,7 +12,7 @@
 
 class BotManager {
 public:
-    explicit BotManager(const std::string& token);
+    explicit BotManager(const std::string_view& token, const std::string_view& admin_pass);
 
     void poll();
 
@@ -68,6 +68,7 @@ private:
 
 private:
     const std::string_view mToken;
+    const std::string_view mAdminPass;
 
     TgBot::Bot mBotHandler;
     TgBot::TgLongPoll mLongPoll;

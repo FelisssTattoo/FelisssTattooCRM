@@ -1,3 +1,4 @@
 {
-    "token": "<your_bot_token_here>"
+    "token": "<your_bot_token_here>",
+    "admin_pass": "<admin_password_here>"
 }

@@ -29,8 +29,12 @@ TgBot::InlineKeyboardMarkup::Ptr
 TgBot::InlineKeyboardMarkup::Ptr
     BotManager::mChooseCriticalAmountMaterialMenuToUpdateDelete(new TgBot::InlineKeyboardMarkup);
 
-BotManager::BotManager(const std::string& token) :
-    mToken(token), mBotHandler(token), mLongPoll(mBotHandler), mDatabaseManager(DB_PATHNAME) {
+BotManager::BotManager(const std::string_view& token, const std::string_view& admin_pass) :
+    mToken(token),
+    mAdminPass(admin_pass),
+    mBotHandler(token.data()),
+    mLongPoll(mBotHandler),
+    mDatabaseManager(DB_PATHNAME) {
     init();
 }
 
@@ -45,12 +49,8 @@ void BotManager::init() {
         "start", std::bind(&BotManager::callbackOnStartCommand, this, std::placeholders::_1));
 
     mBotHandler.getEvents().onCommand(
-        "makemeadmin",
+        mAdminPass.data(),
         std::bind(&BotManager::callbackOnMakeMeAdminCommand, this, std::placeholders::_1));
-
-    mBotHandler.getEvents().onCommand(
-        "makemetattooartist",
-        std::bind(&BotManager::callbackOnMakeMeTattooArtistCommand, this, std::placeholders::_1));
 
     mBotHandler.getEvents().onAnyMessage(
         std::bind(&BotManager::callbackOnAnyMessage, this, std::placeholders::_1));
