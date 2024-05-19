@@ -26,4 +26,9 @@ void ClientChatStatus::clearAllProperties() {
     user_row                       = {};
 
     do_user_choose_user_to_delete = false;
+
+    do_user_choose_user_rights_tattoo_artist_add    = false;
+    do_user_choose_user_rights_tattoo_artist_delete = false;
+    do_user_choose_user_rights_admin_add            = false;
+    do_user_choose_user_rights_admin_delete         = false;
 }

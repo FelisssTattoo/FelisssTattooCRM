@@ -110,6 +110,19 @@ bool DatabaseManager::addAdmin(const UsersTable::UserRow& user_row) {
     }
 }
 
+bool DatabaseManager::deleteAdminByUserId(std::int64_t id) {
+    try {
+        const bool is_okay = mDbHandler.exec(AdminsTable::formDeleteRowQuery(id));
+        if (is_okay) {
+            isAdminsVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
 std::vector<UsersTable::UserRow> DatabaseManager::getAdmins() {
     static std::vector<UsersTable::UserRow> admins_vector;
 
@@ -136,6 +149,19 @@ bool DatabaseManager::addTattooArtist(const UsersTable::UserRow& user_row) {
     try {
         const bool is_okay = mDbHandler.exec(
             TattooArtistsTable::formInsertRowQuery(tattoo_artist_row));
+        if (is_okay) {
+            isTattooArtistsVectorUpdated = false;
+        }
+        return is_okay;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+        return false;
+    }
+}
+
+bool DatabaseManager::deleteTattooArtistByUserId(std::int64_t id) {
+    try {
+        const bool is_okay = mDbHandler.exec(TattooArtistsTable::formDeleteRowQuery(id));
         if (is_okay) {
             isTattooArtistsVectorUpdated = false;
         }

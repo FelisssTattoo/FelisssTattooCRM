@@ -21,9 +21,11 @@ public:
     std::optional<UsersTable::UserRow> getUserByTelegramId(std::int64_t telegram_id);
 
     bool addAdmin(const UsersTable::UserRow& user_row);
+    bool deleteAdminByUserId(std::int64_t id);
     std::vector<UsersTable::UserRow> getAdmins();
 
     bool addTattooArtist(const UsersTable::UserRow& user_row);
+    bool deleteTattooArtistByUserId(std::int64_t id);
     std::vector<UsersTable::UserRow> getTattooArtists();
 
     bool addMaterialAlarmUser(const UsersTable::UserRow& user_row);

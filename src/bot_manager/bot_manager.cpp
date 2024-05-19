@@ -16,6 +16,15 @@ TgBot::InlineKeyboardMarkup::Ptr
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseUserMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseSessionMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mUsersMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr BotManager::mUserRightsMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr
+    BotManager::mUserRightsTattooArtistAddMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr
+    BotManager::mUserRightsTattooArtistDeleteMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr
+    BotManager::mUserRightsAdminAddMenu(new TgBot::InlineKeyboardMarkup);
+TgBot::InlineKeyboardMarkup::Ptr
+    BotManager::mUserRightsAdminDeleteMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mMaterialsMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr BotManager::mChooseMaterialMenu(new TgBot::InlineKeyboardMarkup);
 TgBot::InlineKeyboardMarkup::Ptr
@@ -47,6 +56,9 @@ void BotManager::init() {
 
     mBotHandler.getEvents().onCommand(
         "start", std::bind(&BotManager::callbackOnStartCommand, this, std::placeholders::_1));
+
+    mBotHandler.getEvents().onCommand(
+        "owner", std::bind(&BotManager::callbackOnOwnerCommand, this, std::placeholders::_1));
 
     mBotHandler.getEvents().onCommand(
         mAdminPass.data(),
@@ -91,9 +103,13 @@ void BotManager::initMenus() {
     TgBot::InlineKeyboardButton::Ptr users_button(new TgBot::InlineKeyboardButton);
     users_button->text         = "Користувачі";
     users_button->callbackData = "users";
+    TgBot::InlineKeyboardButton::Ptr users_rights_button(new TgBot::InlineKeyboardButton);
+    users_rights_button->text         = "Налаштування доступу";
+    users_rights_button->callbackData = "users_rights";
     mMainMenu->inlineKeyboard.push_back({materials_button});
     mMainMenu->inlineKeyboard.push_back({sessions_button});
     mMainMenu->inlineKeyboard.push_back({users_button});
+    mMainMenu->inlineKeyboard.push_back({users_rights_button});
 
     TgBot::InlineKeyboardButton::Ptr materials_menu_add_material(new TgBot::InlineKeyboardButton);
     TgBot::InlineKeyboardButton::Ptr materials_menu_delete_material(
@@ -165,6 +181,24 @@ void BotManager::initMenus() {
     delete_user_bt->callbackData = "delete_user";
     mUsersMenu->inlineKeyboard.push_back({add_user_bt, delete_user_bt});
     mUsersMenu->inlineKeyboard.push_back({mBackButton});
+
+    TgBot::InlineKeyboardButton::Ptr user_rights_tattoo_artist_add(new TgBot::InlineKeyboardButton);
+    TgBot::InlineKeyboardButton::Ptr user_rights_tattoo_artist_delete(
+        new TgBot::InlineKeyboardButton);
+    user_rights_tattoo_artist_add->text            = "Додати тату майстра";
+    user_rights_tattoo_artist_add->callbackData    = "user_rights_tattoo_artist_add";
+    user_rights_tattoo_artist_delete->text         = "Прибрати тату майстра";
+    user_rights_tattoo_artist_delete->callbackData = "user_rights_tattoo_artist_delete";
+    TgBot::InlineKeyboardButton::Ptr user_rights_admin_add(new TgBot::InlineKeyboardButton);
+    TgBot::InlineKeyboardButton::Ptr user_rights_admin_delete(new TgBot::InlineKeyboardButton);
+    user_rights_admin_add->text            = "Додати Адміна (Обережно)";
+    user_rights_admin_add->callbackData    = "user_rights_admin_add";
+    user_rights_admin_delete->text         = "Прибрати Адміна";
+    user_rights_admin_delete->callbackData = "user_rights_admin_delete";
+    mUserRightsMenu->inlineKeyboard.push_back(
+        {user_rights_tattoo_artist_add, user_rights_tattoo_artist_delete});
+    mUserRightsMenu->inlineKeyboard.push_back({user_rights_admin_add, user_rights_admin_delete});
+    mUserRightsMenu->inlineKeyboard.push_back({mBackButton});
 }
 
 void BotManager::sendMessage(std::int64_t telegram_id, const std::string& message) {
@@ -222,7 +256,8 @@ void BotManager::editCurrentMenu(const TgBot::Message::Ptr& recv_message) {
 }
 
 void BotManager::callbackOnStartCommand(const TgBot::Message::Ptr& message) {
-    if (!checkIfTelegramIdIsAdmin(message->from->id)) {
+    if (!checkIfTelegramIdIsAdmin(message->from->id)
+        && !checkIfTelegramIdIsTattooArtist(message->from->id)) {
         sendMessage(message,
                     "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
         return;
@@ -257,6 +292,10 @@ void BotManager::callbackOnMakeMeTattooArtistCommand(const TgBot::Message::Ptr& 
     }
 }
 
+void BotManager::callbackOnOwnerCommand(const TgBot::Message::Ptr& message) {
+    sendMessage(message, "Я бот пана Дмитра (@TENK_28)");
+}
+
 void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
     try {
         insertUserInTableIfNotExists(message);
@@ -267,7 +306,8 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             return;
         }
 
-        if (!checkIfTelegramIdIsAdmin(message->from->id)) {
+        if (!checkIfTelegramIdIsAdmin(message->from->id)
+            && !checkIfTelegramIdIsTattooArtist(message->from->id)) {
             sendMessage(message,
                         "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
             return;
@@ -446,7 +486,8 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
     try {
         spdlog::info("{} applied callback with data \"{}\"", formUserInfoStr(query->from),
                      query->data);
-        if (!checkIfTelegramIdIsAdmin(query->from->id)) {
+        if (!checkIfTelegramIdIsAdmin(query->from->id)
+            && !checkIfTelegramIdIsTattooArtist(query->from->id)) {
             sendMessage(query->message,
                         "На жаль ви не маєте доступа до цього бота. Зверніться до адміністратора");
             return;
@@ -666,6 +707,64 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
 
                     client_status->current_menu = mUsersMenu;
                     sendCurrentMenu(query->message);
+                } else if (client_status->do_user_choose_user_rights_tattoo_artist_add) {
+                    client_status->do_user_choose_user_rights_tattoo_artist_add = false;
+                    const auto user_id = std::stoll(data_str);
+                    const auto user    = mDatabaseManager.getUserById(user_id).value();
+                    if (mDatabaseManager.addTattooArtist(user)) {
+                        sendMessage(query->message,
+                                    fmt::format("Користувача {} успішно додано до тату майстрів",
+                                                formUserInfoStr(user)));
+                    } else {
+                        sendMessage(query->message,
+                                    fmt::format("Не вдалося додати {} до тату майстрів",
+                                                formUserInfoStr(user)));
+                    }
+                    client_status->current_menu = mUserRightsMenu;
+                    sendCurrentMenu(query->message);
+                } else if (client_status->do_user_choose_user_rights_tattoo_artist_delete) {
+                    client_status->do_user_choose_user_rights_tattoo_artist_delete = false;
+                    const auto user_id = std::stoll(data_str);
+                    const auto user    = mDatabaseManager.getUserById(user_id).value();
+                    if (mDatabaseManager.deleteTattooArtistByUserId(user.id.value())) {
+                        sendMessage(query->message,
+                                    fmt::format("Користувача {} успішно видалено з тату майстрів",
+                                                formUserInfoStr(user)));
+                    } else {
+                        sendMessage(query->message,
+                                    fmt::format("Не вдалося видалити {} з тату майстрів",
+                                                formUserInfoStr(user)));
+                    }
+                    client_status->current_menu = mUserRightsMenu;
+                    sendCurrentMenu(query->message);
+                } else if (client_status->do_user_choose_user_rights_admin_add) {
+                    client_status->do_user_choose_user_rights_admin_add = false;
+                    const auto user_id                                  = std::stoll(data_str);
+                    const auto user = mDatabaseManager.getUserById(user_id).value();
+                    if (mDatabaseManager.addAdmin(user)) {
+                        sendMessage(query->message,
+                                    fmt::format("Користувача {} успішно додано до адмінів",
+                                                formUserInfoStr(user)));
+                    } else {
+                        sendMessage(query->message, fmt::format("Не вдалося додати {} до адмінів",
+                                                                formUserInfoStr(user)));
+                    }
+                    client_status->current_menu = mUserRightsMenu;
+                    sendCurrentMenu(query->message);
+                } else if (client_status->do_user_choose_user_rights_admin_delete) {
+                    client_status->do_user_choose_user_rights_admin_delete = false;
+                    const auto user_id                                     = std::stoll(data_str);
+                    const auto user = mDatabaseManager.getUserById(user_id).value();
+                    if (mDatabaseManager.deleteAdminByUserId(user.id.value())) {
+                        sendMessage(query->message,
+                                    fmt::format("Користувача {} успішно видалено з адмінів",
+                                                formUserInfoStr(user)));
+                    } else {
+                        sendMessage(query->message, fmt::format("Не вдалося видалити {} з адмінів",
+                                                                formUserInfoStr(user)));
+                    }
+                    client_status->current_menu = mUserRightsMenu;
+                    sendCurrentMenu(query->message);
                 }
             } catch (const std::exception& e) {
                 SPDLOG_ERROR("{}", e.what());
@@ -704,6 +803,31 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
             updateChooseUserMenu();
             client_status->current_menu = mChooseUserMenu;
             editCurrentMenu(query->message);
+        } else if (query->data == "users_rights") {
+            client_status->current_menu = mUserRightsMenu;
+            editCurrentMenu(query->message);
+        } else if (query->data == "user_rights_tattoo_artist_add") {
+            client_status->do_user_choose_user_rights_tattoo_artist_add = true;
+            updateUserRightsTattooArtistAddMenu();
+            client_status->current_menu = mUserRightsTattooArtistAddMenu;
+            editCurrentMenu(query->message);
+        } else if (query->data == "user_rights_tattoo_artist_delete") {
+            client_status->do_user_choose_user_rights_tattoo_artist_delete = true;
+            updateUserRightsTattooArtistDeleteMenu();
+            client_status->current_menu = mUserRightsTattooArtistDeleteMenu;
+            editCurrentMenu(query->message);
+        } else if (query->data == "user_rights_admin_add") {
+            client_status->do_user_choose_user_rights_admin_add = true;
+            updateUserRightsAdminAddMenu();
+            client_status->current_menu = mUserRightsAdminAddMenu;
+            editCurrentMenu(query->message);
+        } else if (query->data == "user_rights_admin_delete") {
+            client_status->do_user_choose_user_rights_admin_delete = true;
+            updateUserRightsAdminDeleteMenu();
+            client_status->current_menu = mUserRightsAdminDeleteMenu;
+            editCurrentMenu(query->message);
+        } else {
+            SPDLOG_ERROR("Callback \"{}\" is not valid", query->data);
         }
     } catch (const std::exception& e) {
         SPDLOG_ERROR("{}", e.what());
@@ -867,6 +991,79 @@ void BotManager::updateChooseSessionMenu() {
     }
 
     mChooseSessionMenu->inlineKeyboard.push_back({mBackButton});
+}
+
+void BotManager::updateUserRightsTattooArtistAddMenu() {
+    mUserRightsTattooArtistAddMenu->inlineKeyboard.clear();
+
+    const auto users          = mDatabaseManager.getUsers();
+    const auto tattoo_artists = mDatabaseManager.getTattooArtists();
+    for (const auto& user : users) {
+        const auto found_tattoo_artist = std::find_if(tattoo_artists.begin(), tattoo_artists.end(),
+                                                      [&user](const auto& tattoo_artist) {
+                                                          return (user.id == tattoo_artist.id);
+                                                      });
+        if (found_tattoo_artist == tattoo_artists.end()) {
+            TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+            button->text         = formUserInfoStr(user);
+            button->callbackData = fmt::format("{}{}", CHOOSE_USER_PREFIX.data(), user.id.value());
+            mUserRightsTattooArtistAddMenu->inlineKeyboard.push_back({button});
+        }
+    }
+
+    mUserRightsTattooArtistAddMenu->inlineKeyboard.push_back({mBackButton});
+}
+
+void BotManager::updateUserRightsTattooArtistDeleteMenu() {
+    mUserRightsTattooArtistDeleteMenu->inlineKeyboard.clear();
+
+    const auto tattoo_artists = mDatabaseManager.getTattooArtists();
+    for (const auto& tattoo_artist : tattoo_artists) {
+        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        button->text         = formUserInfoStr(tattoo_artist);
+        button->callbackData = fmt::format("{}{}", CHOOSE_USER_PREFIX.data(),
+                                           tattoo_artist.id.value());
+
+        mUserRightsTattooArtistDeleteMenu->inlineKeyboard.push_back({button});
+    }
+
+    mUserRightsTattooArtistDeleteMenu->inlineKeyboard.push_back({mBackButton});
+}
+
+void BotManager::updateUserRightsAdminAddMenu() {
+    mUserRightsAdminAddMenu->inlineKeyboard.clear();
+
+    const auto users  = mDatabaseManager.getUsers();
+    const auto admins = mDatabaseManager.getAdmins();
+    for (const auto& user : users) {
+        const auto found_admin = std::find_if(admins.begin(), admins.end(),
+                                              [&user](const auto& admin) {
+                                                  return (user.id == admin.id);
+                                              });
+        if (found_admin == admins.end()) {
+            TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+            button->text         = formUserInfoStr(user);
+            button->callbackData = fmt::format("{}{}", CHOOSE_USER_PREFIX.data(), user.id.value());
+            mUserRightsAdminAddMenu->inlineKeyboard.push_back({button});
+        }
+    }
+
+    mUserRightsAdminAddMenu->inlineKeyboard.push_back({mBackButton});
+}
+
+void BotManager::updateUserRightsAdminDeleteMenu() {
+    mUserRightsAdminDeleteMenu->inlineKeyboard.clear();
+
+    const auto admins = mDatabaseManager.getAdmins();
+    for (const auto& admin : admins) {
+        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        button->text         = formUserInfoStr(admin);
+        button->callbackData = fmt::format("{}{}", CHOOSE_USER_PREFIX.data(), admin.id.value());
+
+        mUserRightsAdminDeleteMenu->inlineKeyboard.push_back({button});
+    }
+
+    mUserRightsAdminDeleteMenu->inlineKeyboard.push_back({mBackButton});
 }
 
 std::string BotManager::formUserInfoStr(const TgBot::User::Ptr& user) {
@@ -1094,6 +1291,30 @@ BotManager::getMenuMessage(const TgBot::InlineKeyboardMarkup::Ptr& menu) {
             }
         }
         ret_message.append(choose_option_str);
+    } else if (menu == mUserRightsMenu) {
+        const auto& tattoo_artists = mDatabaseManager.getTattooArtists();
+        if (tattoo_artists.size()) {
+            ret_message += "Тату майстри:\n";
+            for (const auto& tattoo_artist : tattoo_artists) {
+                ret_message += fmt::format(" - {}\n", formUserInfoStr(tattoo_artist));
+            }
+        }
+        const auto& admins = mDatabaseManager.getAdmins();
+        if (admins.size()) {
+            ret_message += "Адміни:\n";
+            for (const auto& admin : admins) {
+                ret_message += fmt::format(" - {}\n", formUserInfoStr(admin));
+            }
+        }
+        ret_message += choose_option_str;
+    } else if (menu == mUserRightsTattooArtistAddMenu) {
+        ret_message.assign("Виберіть користувача:");
+    } else if (menu == mUserRightsTattooArtistDeleteMenu) {
+        ret_message.assign("Виберіть користувача:");
+    } else if (menu == mUserRightsAdminAddMenu) {
+        ret_message.assign("Виберіть користувача:");
+    } else if (menu == mUserRightsAdminDeleteMenu) {
+        ret_message.assign("Виберіть користувача:");
     } else {
         SPDLOG_ERROR("Нема відповідного меню");
         return {};
@@ -1128,6 +1349,16 @@ BotManager::returnPreviousMenu(const TgBot::InlineKeyboardMarkup::Ptr& current_m
         return mConfigureMaterialCriticalAmountMenu;
     } else if (current_menu == mUsersMenu) {
         return mMainMenu;
+    } else if (current_menu == mUserRightsMenu) {
+        return mMainMenu;
+    } else if (current_menu == mUserRightsTattooArtistAddMenu) {
+        return mUserRightsMenu;
+    } else if (current_menu == mUserRightsTattooArtistDeleteMenu) {
+        return mUserRightsMenu;
+    } else if (current_menu == mUserRightsAdminAddMenu) {
+        return mUserRightsMenu;
+    } else if (current_menu == mUserRightsAdminDeleteMenu) {
+        return mUserRightsMenu;
     } else {
         SPDLOG_ERROR("Not valid current menu");
         return mMainMenu;

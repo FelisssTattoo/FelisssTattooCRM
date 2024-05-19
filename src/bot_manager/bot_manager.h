@@ -33,6 +33,7 @@ private:
     void callbackOnStartCommand(const TgBot::Message::Ptr& message);
     void callbackOnMakeMeAdminCommand(const TgBot::Message::Ptr& message);
     void callbackOnMakeMeTattooArtistCommand(const TgBot::Message::Ptr& message);
+    void callbackOnOwnerCommand(const TgBot::Message::Ptr& message);
     void callbackOnAnyMessage(const TgBot::Message::Ptr& message);
     void callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query);
 
@@ -46,6 +47,10 @@ private:
     void updateChooseTattooArtistMenu();
     void updateChooseUserMenu();
     void updateChooseSessionMenu();
+    void updateUserRightsTattooArtistAddMenu();
+    void updateUserRightsTattooArtistDeleteMenu();
+    void updateUserRightsAdminAddMenu();
+    void updateUserRightsAdminDeleteMenu();
 
     std::string formUserInfoStr(const TgBot::User::Ptr& user);
     std::string formUserInfoStr(const UsersTable::UserRow& user_row);
@@ -96,6 +101,11 @@ private:
     static TgBot::InlineKeyboardMarkup::Ptr mChooseSessionMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mUsersMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mMaterialsMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mUserRightsMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mUserRightsTattooArtistAddMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mUserRightsTattooArtistDeleteMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mUserRightsAdminAddMenu;
+    static TgBot::InlineKeyboardMarkup::Ptr mUserRightsAdminDeleteMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mChooseMaterialAlarmUserMenu;
     static TgBot::InlineKeyboardMarkup::Ptr mConfigureMaterialCriticalAmountMenu;

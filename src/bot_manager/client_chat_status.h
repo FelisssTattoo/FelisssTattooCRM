@@ -36,5 +36,10 @@ public:
 
     bool do_user_choose_user_to_delete = false;
 
+    bool do_user_choose_user_rights_tattoo_artist_add    = false;
+    bool do_user_choose_user_rights_tattoo_artist_delete = false;
+    bool do_user_choose_user_rights_admin_add            = false;
+    bool do_user_choose_user_rights_admin_delete         = false;
+
     void clearAllProperties();
 };
