@@ -1167,10 +1167,8 @@ void BotManager::sendSessionReminderIfNessessory() {
                 }
             }
 
-            const auto the_day_before_session       = session_tp - std::chrono::hours(24);
-            std::time_t the_day_before_session_time = std::chrono::system_clock::to_time_t(
-                the_day_before_session);
-            std::tm the_day_before_session_tm = *std::localtime(&the_day_before_session_time);
+            std::tm the_day_before_session_tm = DatabaseManagerTools::convertTimePointToTm(
+                session_tp - std::chrono::hours(24));
 
             if (now_tm.tm_mday == the_day_before_session_tm.tm_mday
                 && now_tm.tm_mon == the_day_before_session_tm.tm_mon
