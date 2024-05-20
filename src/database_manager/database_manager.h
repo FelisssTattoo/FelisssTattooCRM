@@ -23,10 +23,12 @@ public:
     bool addAdmin(const UsersTable::UserRow& user_row);
     bool deleteAdminByUserId(std::int64_t id);
     std::vector<UsersTable::UserRow> getAdmins();
+    bool checkIfTelegramIdIsAdmin(std::int64_t telegram_id);
 
     bool addTattooArtist(const UsersTable::UserRow& user_row);
     bool deleteTattooArtistByUserId(std::int64_t id);
     std::vector<UsersTable::UserRow> getTattooArtists();
+    bool checkIfTelegramIdIsTattooArtist(std::int64_t telegram_id);
 
     bool addMaterialAlarmUser(const UsersTable::UserRow& user_row);
     bool deleteMaterialAlarmUserByUserId(std::int64_t user_id);
