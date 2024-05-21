@@ -144,6 +144,15 @@ std::vector<UsersTable::UserRow> DatabaseManager::getAdmins() {
     return admins_vector;
 }
 
+bool DatabaseManager::checkIfTelegramIdIsAdmin(std::int64_t telegram_id) {
+    const auto all_admins  = getAdmins();
+    const auto found_admin = std::find_if(all_admins.begin(), all_admins.end(),
+                                          [telegram_id](const UsersTable::UserRow& user_row) {
+                                              return (user_row.telegram_id == telegram_id);
+                                          });
+    return (found_admin != all_admins.end());
+}
+
 bool DatabaseManager::addTattooArtist(const UsersTable::UserRow& user_row) {
     TattooArtistsTable::TattooArtistRow tattoo_artist_row = {.user_id = user_row.id.value()};
     try {
@@ -191,6 +200,15 @@ std::vector<UsersTable::UserRow> DatabaseManager::getTattooArtists() {
     }
 
     return tattoo_artists_vector;
+}
+
+bool DatabaseManager::checkIfTelegramIdIsTattooArtist(std::int64_t telegram_id) {
+    const auto all_tattoo_artists = getTattooArtists();
+    const auto found_admin = std::find_if(all_tattoo_artists.begin(), all_tattoo_artists.end(),
+                                          [telegram_id](const UsersTable::UserRow& user_row) {
+                                              return (user_row.telegram_id == telegram_id);
+                                          });
+    return (found_admin != all_tattoo_artists.end());
 }
 
 bool DatabaseManager::addMaterialAlarmUser(const UsersTable::UserRow& user_row) {
@@ -296,6 +314,7 @@ bool DatabaseManager::deleteMaterialCriticalAmountByMaterialId(std::int64_t mate
     if (found_material != critical_amount_materials.end()) {
         return deleteMaterialCriticalAmount(found_material->id.value());
     }
+    SPDLOG_WARN("Material with id {} not found in material_crtical_amount table", material_id);
     return false;
 }
 
