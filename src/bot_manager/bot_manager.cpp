@@ -49,6 +49,9 @@ void BotManager::init() {
         std::bind(&BotManager::sendSessionReminderIfNessessory, this));
     mSessionReminderTimer.setInterval(60 * 1000);
     mSessionReminderTimer.startOrReset();
+
+    spdlog::info("Bot: {}(@{})", mBotHandler.getApi().getMe()->firstName,
+                 mBotHandler.getApi().getMe()->username);
 }
 
 void BotManager::initMenus() {
@@ -187,9 +190,9 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             return;
         }
 
-        if (client_status->do_user_type_material_name) {
-            client_status->do_user_type_material_name = false;
-            const auto find_result                    = mDatabase->getMaterialByName(message->text);
+        if (client_status->at(ChatStatuses::DO_USER_TYPE_MATERIAL_NAME)) {
+            client_status->at(ChatStatuses::DO_USER_TYPE_MATERIAL_NAME) = false;
+            const auto find_result = mDatabase->getMaterialByName(message->text);
             if (find_result) {
                 const auto send_str = fmt::format("Наразі {} вже в базі даних",
                                                   formMaterialInfoStr(*find_result));
@@ -198,18 +201,19 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 return;
             }
 
-            client_status->updating_material.name          = message->text;
-            client_status->do_user_specify_material_suffix = true;
+            client_status->updating_material.name                            = message->text;
+            client_status->at(ChatStatuses::DO_USER_SPECIFY_MATERIAL_SUFFIX) = true;
             sendMenuWithMessage(message, mSkipMenu, "В чому вимірюється одиниця матеріалу?");
-        } else if (client_status->do_user_specify_material_suffix) {
-            client_status->do_user_specify_material_suffix = false;
+        } else if (client_status->at(ChatStatuses::DO_USER_SPECIFY_MATERIAL_SUFFIX)) {
+            client_status->at(ChatStatuses::DO_USER_SPECIFY_MATERIAL_SUFFIX) = false;
             if (message->text != SKIP_BUTTON_TEXT) {
                 client_status->updating_material.suffix = message->text;
             }
-            client_status->do_user_specify_material_count = true;
+
+            client_status->at(ChatStatuses::DO_USER_SPECIFY_MATERIAL_COUNT) = true;
             sendMessage(message, "Скільки зараз одиниць матеріалу в салоні?");
-        } else if (client_status->do_user_specify_material_count) {
-            client_status->do_user_specify_material_count = false;
+        } else if (client_status->at(ChatStatuses::DO_USER_SPECIFY_MATERIAL_COUNT)) {
+            client_status->at(ChatStatuses::DO_USER_SPECIFY_MATERIAL_COUNT) = false;
             try {
                 client_status->updating_material.count = std::stod(message->text);
             } catch (const std::exception& e) {
@@ -227,8 +231,9 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 sendMessage(message, ERROR_MESSAGE.data());
             }
             sendCurrentMenu(message);
-        } else if (client_status->do_user_update_material_count) {
-            client_status->do_user_update_material_count = false;
+
+        } else if (client_status->at(ChatStatuses::DO_USER_UPDATE_MATERIAL_COUNT)) {
+            client_status->at(ChatStatuses::DO_USER_UPDATE_MATERIAL_COUNT) = false;
             try {
                 client_status->updating_material.count = std::stod(message->text);
             } catch (const std::exception& e) {
@@ -251,8 +256,9 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             }
             client_status->returnToPreviousMenu();
             sendCurrentMenu(message);
-        } else if (client_status->do_user_choose_material_critical_amount_to_add) {
-            client_status->do_user_choose_material_critical_amount_to_add = false;
+        } else if (client_status->at(
+                       ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_ADD)) {
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_ADD) = false;
             try {
                 const auto new_critical_amount = std::stoll(message->text);
                 if (mDatabase->addMaterialCriticalAmount(client_status->updating_material,
@@ -273,8 +279,10 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 sendCurrentMenu(message);
                 return;
             }
-        } else if (client_status->do_user_type_material_critical_amount_to_update) {
-            client_status->do_user_type_material_critical_amount_to_update = false;
+        } else if (client_status->at(
+                       ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_UPDATE)) {
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_UPDATE)
+                = false;
             try {
                 MaterialCriticalAmountTable::MaterialCriticalAmountRow new_critical_amount = {
                     .critical_amount = std::stoll(message->text)};
@@ -296,8 +304,9 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
                 sendCurrentMenu(message);
                 return;
             }
-        } else if (client_status->do_user_type_date) {
-            client_status->do_user_type_date = false;
+        } else if (client_status->at(ChatStatuses::DO_USER_TYPE_DATE)) {
+            client_status->at(ChatStatuses::DO_USER_TYPE_DATE) = false;
+
             if (!DatabaseManagerTools::isValidDateTimeFormat(message->text)) {
                 sendMessage(message, "Неправильний формат дати");
                 sendCurrentMenu(message);
@@ -312,19 +321,20 @@ void BotManager::callbackOnAnyMessage(const TgBot::Message::Ptr& message) {
             client_status->session_row.date_time
                 = DatabaseManagerTools::convertTimePointToStr(*tp).value();
 
-            client_status->do_user_choose_user_for_session = true;
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_FOR_SESSION) = true;
+
             client_status->setMenu(Menus::SESSIONS_MENU_ADD_SESSION_CHOOSE_CUSTOMER);
             sendCurrentMenu(message);
-        } else if (client_status->do_user_type_user_name) {
-            client_status->user_row.name             = message->text;
-            client_status->do_user_type_user_name    = false;
-            client_status->do_user_type_user_surname = true;
+        } else if (client_status->at(ChatStatuses::DO_USER_TYPE_USER_NAME)) {
+            client_status->user_row.name                               = message->text;
+            client_status->at(ChatStatuses::DO_USER_TYPE_USER_NAME)    = false;
+            client_status->at(ChatStatuses::DO_USER_TYPE_USER_SURNAME) = true;
             sendMenuWithMessage(message, mSkipMenu, "Введіть прізвище(можна пропустити):");
-        } else if (client_status->do_user_type_user_surname) {
+        } else if (client_status->at(ChatStatuses::DO_USER_TYPE_USER_SURNAME)) {
             if (message->text != SKIP_BUTTON_TEXT) {
                 client_status->user_row.surname = message->text;
             }
-            client_status->do_user_type_user_surname = false;
+            client_status->at(ChatStatuses::DO_USER_TYPE_USER_SURNAME) = false;
             if (mDatabase->addUser(client_status->user_row)) {
                 sendMessage(message, fmt::format("{} додано в базу даних",
                                                  formUserInfoStr(client_status->user_row)));
@@ -368,15 +378,15 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
             editCurrentMenu(query);
         } else if (query->data == "add_material") {
             sendMessage(query, "Як називається матеріал?");
-            client_status->do_user_type_material_name = true;
+            client_status->at(ChatStatuses::DO_USER_TYPE_MATERIAL_NAME) = true;
         } else if (query->data == "delete_material" || query->data == "modify_material") {
             if (query->data == "delete_material") {
-                client_status->do_user_choose_to_delete_material = true;
-                client_status->do_user_choose_to_modify_material = false;
+                client_status->at(ChatStatuses::DO_USER_CHOOSE_TO_DELETE_MATERIAL) = true;
+                client_status->at(ChatStatuses::DO_USER_CHOOSE_TO_MODIFY_MATERIAL) = false;
                 client_status->setMenu(Menus::MATERIALS_DELETE_MATERIAL_MENU);
             } else if (query->data == "modify_material") {
-                client_status->do_user_choose_to_modify_material = true;
-                client_status->do_user_choose_to_delete_material = false;
+                client_status->at(ChatStatuses::DO_USER_CHOOSE_TO_MODIFY_MATERIAL) = true;
+                client_status->at(ChatStatuses::DO_USER_CHOOSE_TO_DELETE_MATERIAL) = false;
                 client_status->setMenu(Menus::MATERIALS_UPDATE_MATERIAL_MENU);
             }
 
@@ -389,13 +399,13 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
             const auto material_id              = client_status->updating_material.id.value();
             client_status->updating_material    = mDatabase->getMaterialById(material_id).value();
 
-            if (client_status->do_user_choose_to_modify_material) {
-                client_status->do_user_update_material_count = true;
-                const auto send_message                      = fmt::format(
+            if (client_status->at(ChatStatuses::DO_USER_CHOOSE_TO_MODIFY_MATERIAL)) {
+                client_status->at(ChatStatuses::DO_USER_UPDATE_MATERIAL_COUNT) = true;
+                const auto send_message                                        = fmt::format(
                     "Введіть нову кількість для {}",
                     formMaterialInfoStr(client_status->updating_material));
                 sendMessage(query, send_message);
-            } else if (client_status->do_user_choose_to_delete_material) {
+            } else if (client_status->at(ChatStatuses::DO_USER_CHOOSE_TO_DELETE_MATERIAL)) {
                 mDatabase->deleteMaterialCriticalAmountByMaterialId(material_id);
 
                 if (mDatabase->deleteMaterialById(material_id)) {
@@ -411,19 +421,23 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                 }
                 client_status->returnToPreviousMenu();
                 sendCurrentMenu(query);
-            } else if (client_status->do_user_choose_material_critical_amount_to_add) {
+            } else if (client_status->at(
+                           ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_ADD)) {
                 sendMessage(query,
                             fmt::format("Введіть критичну кількість для {}",
                                         formMaterialInfoStr(client_status->updating_material)));
-            } else if (client_status->do_user_choose_material_critical_amount_to_update) {
-                client_status->do_user_type_material_critical_amount_to_update = true;
+            } else if (client_status->at(
+                           ChatStatuses::DO_USER_TYPE_MATERIAL_CRITICAL_AMOUNT_TO_UPDATE)) {
+                client_status->at(ChatStatuses::DO_USER_TYPE_MATERIAL_CRITICAL_AMOUNT_TO_UPDATE)
+                    = true;
                 const auto critical_amount = mDatabase->getMaterialCriticalAmountByMaterialId(
                     material_id);
                 sendMessage(query,
                             fmt::format("Введіть нову критичного кількість для {}, минула: {}",
                                         formMaterialInfoStr(client_status->updating_material),
                                         (*critical_amount).critical_amount));
-            } else if (client_status->do_user_choose_material_critical_amount_to_delete) {
+            } else if (client_status->at(
+                           ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_DELETE)) {
                 const auto critical_amount = mDatabase->getMaterialCriticalAmountByMaterialId(
                     material_id);
                 if (mDatabase->deleteMaterialCriticalAmountByMaterialId(material_id)) {
@@ -484,13 +498,16 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                    || query->data == "configure_material_critical_amount_delete") {
             if (query->data == "configure_material_critical_amount_add") {
                 client_status->setMenu(Menus::CRITICAL_MATERIALS_MENU_ADD);
-                client_status->do_user_choose_material_critical_amount_to_add = true;
+                client_status->at(ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_ADD)
+                    = true;
             } else if (query->data == "configure_material_critical_amount_modify") {
                 client_status->setMenu(Menus::CRITICAL_MATERIALS_MENU_UPDATE);
-                client_status->do_user_choose_material_critical_amount_to_update = true;
+                client_status->at(ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_UPDATE)
+                    = true;
             } else if (query->data == "configure_material_critical_amount_delete") {
                 client_status->setMenu(Menus::CRITICAL_MATERIALS_MENU_DELETE);
-                client_status->do_user_choose_material_critical_amount_to_delete = true;
+                client_status->at(ChatStatuses::DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_DELETE)
+                    = true;
             }
             editCurrentMenu(query);
         } else if (query->data == "sessions") {
@@ -512,8 +529,8 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
 
                 sendMessage(query, "Відправ дату сеансу у форматі dd/mm/year, а також "
                                    "додай hh:mm якщо відомий час:");
-                client_status->session_row.tattoo_artist_id = tattoo_artist_id;
-                client_status->do_user_type_date            = true;
+                client_status->session_row.tattoo_artist_id        = tattoo_artist_id;
+                client_status->at(ChatStatuses::DO_USER_TYPE_DATE) = true;
             } catch (const std::exception& e) {
                 SPDLOG_ERROR("{}", e.what());
                 sendMessage(query, ERROR_MESSAGE.data());
@@ -523,8 +540,8 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                 std::string data_str(query->data);
                 data_str.erase(0, CHOOSE_USER_PREFIX.length());
 
-                if (client_status->do_user_choose_user_for_session) {
-                    client_status->do_user_choose_user_for_session = false;
+                if (client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_FOR_SESSION)) {
+                    client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_FOR_SESSION) = false;
                     if (data_str != "no") {
                         client_status->session_row.user_id = std::stoll(data_str);
                     }
@@ -549,8 +566,8 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                     }
                     client_status->setMenu(Menus::SESSIONS_MENU);
                     sendCurrentMenu(query);
-                } else if (client_status->do_user_choose_user_to_delete) {
-                    client_status->do_user_choose_user_to_delete = false;
+                } else if (client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_TO_DELETE)) {
+                    client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_TO_DELETE) = false;
 
                     if (data_str != "no") {
                         const auto user     = mDatabase->getUserById(std::stoll(data_str)).value();
@@ -569,8 +586,10 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
 
                     client_status->setMenu(Menus::USERS_MENU);
                     sendCurrentMenu(query);
-                } else if (client_status->do_user_choose_user_rights_tattoo_artist_add) {
-                    client_status->do_user_choose_user_rights_tattoo_artist_add = false;
+                } else if (client_status->at(
+                               ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_ADD)) {
+                    client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_ADD)
+                        = false;
                     const auto user_id = std::stoll(data_str);
                     const auto user    = mDatabase->getUserById(user_id).value();
                     if (mDatabase->addTattooArtist(user)) {
@@ -583,8 +602,10 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                     }
                     client_status->setMenu(Menus::USER_RIGHTS_MENU);
                     sendCurrentMenu(query);
-                } else if (client_status->do_user_choose_user_rights_tattoo_artist_delete) {
-                    client_status->do_user_choose_user_rights_tattoo_artist_delete = false;
+                } else if (client_status->at(
+                               ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_DELETE)) {
+                    client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_DELETE)
+                        = false;
                     const auto user_id = std::stoll(data_str);
                     const auto user    = mDatabase->getUserById(user_id).value();
                     if (mDatabase->deleteTattooArtistByUserId(user.id.value())) {
@@ -597,10 +618,11 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                     }
                     client_status->setMenu(Menus::USER_RIGHTS_MENU);
                     sendCurrentMenu(query);
-                } else if (client_status->do_user_choose_user_rights_admin_add) {
-                    client_status->do_user_choose_user_rights_admin_add = false;
-                    const auto user_id                                  = std::stoll(data_str);
-                    const auto user = mDatabase->getUserById(user_id).value();
+
+                } else if (client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_ADMIN_ADD)) {
+                    client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_ADMIN_ADD) = false;
+                    const auto user_id = std::stoll(data_str);
+                    const auto user    = mDatabase->getUserById(user_id).value();
                     if (mDatabase->addAdmin(user)) {
                         sendMessage(query, fmt::format("Користувача {} успішно додано до адмінів",
                                                        formUserInfoStr(user)));
@@ -610,10 +632,13 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
                     }
                     client_status->setMenu(Menus::USER_RIGHTS_MENU);
                     sendCurrentMenu(query);
-                } else if (client_status->do_user_choose_user_rights_admin_delete) {
-                    client_status->do_user_choose_user_rights_admin_delete = false;
-                    const auto user_id                                     = std::stoll(data_str);
-                    const auto user = mDatabase->getUserById(user_id).value();
+
+                } else if (client_status->at(
+                               ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_ADMIN_DELETE)) {
+                    client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_ADMIN_DELETE)
+                        = false;
+                    const auto user_id = std::stoll(data_str);
+                    const auto user    = mDatabase->getUserById(user_id).value();
                     if (mDatabase->deleteAdminByUserId(user.id.value())) {
                         sendMessage(query, fmt::format("Користувача {} успішно видалено з адмінів",
                                                        formUserInfoStr(user)));
@@ -663,29 +688,29 @@ void BotManager::callbackOnCallbackQuery(const TgBot::CallbackQuery::Ptr& query)
             editCurrentMenu(query);
         } else if (query->data == "add_user") {
             client_status->clearAllProperties();
-            client_status->do_user_type_user_name = true;
+            client_status->at(ChatStatuses::DO_USER_TYPE_USER_NAME) = true;
             sendMessage(query, "Введіть імя користувача");
         } else if (query->data == "delete_user") {
-            client_status->do_user_choose_user_to_delete = true;
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_TO_DELETE) = true;
             client_status->setMenu(Menus::USERS_MENU_DELETE_USER);
             editCurrentMenu(query);
         } else if (query->data == "users_rights") {
             client_status->setMenu(Menus::USER_RIGHTS_MENU);
             editCurrentMenu(query);
         } else if (query->data == "user_rights_tattoo_artist_add") {
-            client_status->do_user_choose_user_rights_tattoo_artist_add = true;
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_ADD) = true;
             client_status->setMenu(Menus::USER_RIGHTS_MENU_ADD_TATTOO_ARTIST);
             editCurrentMenu(query);
         } else if (query->data == "user_rights_tattoo_artist_delete") {
-            client_status->do_user_choose_user_rights_tattoo_artist_delete = true;
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_DELETE) = true;
             client_status->setMenu(Menus::USER_RIGHTS_MENU_DELETE_TATTOO_ARTIST);
             editCurrentMenu(query);
         } else if (query->data == "user_rights_admin_add") {
-            client_status->do_user_choose_user_rights_admin_add = true;
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_ADMIN_ADD) = true;
             client_status->setMenu(Menus::USER_RIGHTS_MENU_ADD_ADMIN);
             editCurrentMenu(query);
         } else if (query->data == "user_rights_admin_delete") {
-            client_status->do_user_choose_user_rights_admin_delete = true;
+            client_status->at(ChatStatuses::DO_USER_CHOOSE_USER_RIGHTS_ADMIN_DELETE) = true;
             client_status->setMenu(Menus::USER_RIGHTS_MENU_DELETE_ADMIN);
             editCurrentMenu(query);
         } else {

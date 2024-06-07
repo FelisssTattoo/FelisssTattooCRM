@@ -4,7 +4,9 @@
 
 #include <tgbot/tgbot.h>
 
-enum class Menus {
+#include <bitset>
+
+enum class Menus : std::uint8_t {
     MAIN_MENU,
     MATERIALS_MENU,
     MATERIALS_DELETE_MATERIAL_MENU,
@@ -27,6 +29,34 @@ enum class Menus {
     USER_RIGHTS_MENU_DELETE_ADMIN
 };
 
+enum class ChatStatuses : std::uint8_t {
+    DO_USER_TYPE_MATERIAL_NAME,
+    DO_USER_SPECIFY_MATERIAL_SUFFIX,
+    DO_USER_SPECIFY_MATERIAL_COUNT,
+    DO_USER_UPDATE_MATERIAL_COUNT,
+    DO_USER_CHOOSE_TO_MODIFY_MATERIAL,
+    DO_USER_CHOOSE_TO_DELETE_MATERIAL,
+
+    DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_ADD,
+    DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_UPDATE,
+    DO_USER_TYPE_MATERIAL_CRITICAL_AMOUNT_TO_UPDATE,
+    DO_USER_CHOOSE_MATERIAL_CRITICAL_AMOUNT_TO_DELETE,
+
+    DO_USER_TYPE_DATE,
+    DO_USER_CHOOSE_USER_FOR_SESSION,
+
+    DO_USER_TYPE_USER_NAME,
+    DO_USER_TYPE_USER_SURNAME,
+
+    DO_USER_CHOOSE_USER_TO_DELETE,
+
+    DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_ADD,
+    DO_USER_CHOOSE_USER_RIGHTS_TATTOO_ARTIST_DELETE,
+    DO_USER_CHOOSE_USER_RIGHTS_ADMIN_ADD,
+    DO_USER_CHOOSE_USER_RIGHTS_ADMIN_DELETE,
+    CHAT_STATUSES_SIZE
+};
+
 class ClientChatStatus {
 public:
     ClientChatStatus(std::int64_t telegram_id, std::weak_ptr<DatabaseManager> database);
@@ -40,37 +70,13 @@ public:
     void returnToPreviousMenu();
 
     MaterialsTable::MaterialRow updating_material{};
-    bool do_user_type_material_name        = false;
-    bool do_user_specify_material_suffix   = false;
-    bool do_user_specify_material_count    = false;
-    bool do_user_update_material_count     = false;
-    bool do_user_choose_to_modify_material = false;
-    bool do_user_choose_to_delete_material = false;
-
-    bool do_user_choose_material_critical_amount_to_add    = false;
-    bool do_user_choose_material_critical_amount_to_update = false;
-    bool do_user_type_material_critical_amount_to_update   = false;
-    bool do_user_choose_material_critical_amount_to_delete = false;
-
-    bool do_user_type_date               = false;
-    bool do_user_choose_user_for_session = false;
     SessionsTable::SessionRow session_row{};
-
-    bool do_user_type_user_name         = false;
-    bool do_user_type_user_surname      = false;
-    bool do_user_type_user_patronymic   = false;
-    bool do_user_type_user_birthdate    = false;
-    bool do_user_type_user_phone_number = false;
-    bool do_user_type_user_telegram     = false;
-    bool do_user_type_user_instagram    = false;
     UsersTable::UserRow user_row{};
 
-    bool do_user_choose_user_to_delete = false;
-
-    bool do_user_choose_user_rights_tattoo_artist_add    = false;
-    bool do_user_choose_user_rights_tattoo_artist_delete = false;
-    bool do_user_choose_user_rights_admin_add            = false;
-    bool do_user_choose_user_rights_admin_delete         = false;
+    std::bitset<static_cast<std::uint8_t>(ChatStatuses::CHAT_STATUSES_SIZE)>::reference
+    operator[](ChatStatuses chat_status_flag);
+    std::bitset<static_cast<std::uint8_t>(ChatStatuses::CHAT_STATUSES_SIZE)>::reference
+    at(ChatStatuses chat_status_flag);
 
 private:
     void updateCurrentMenu();
@@ -104,4 +110,6 @@ private:
     TgBot::InlineKeyboardMarkup::Ptr mMenu;
 
     static TgBot::InlineKeyboardButton::Ptr mBackButton;
+
+    std::bitset<static_cast<std::uint8_t>(ChatStatuses::CHAT_STATUSES_SIZE)> mChatStatuses;
 };
